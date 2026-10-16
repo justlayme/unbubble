@@ -4,7 +4,7 @@
 ; Azure Trusted Signing. Unsigned installers show a SmartScreen warning.
 
 #define AppName "Unbubble"
-#define AppVersion GetEnv("GM_VERSION") == "" ? "1.0.0" : GetEnv("GM_VERSION")
+#define AppVersion GetEnv("GM_VERSION") == "" ? "1.0.1" : GetEnv("GM_VERSION")
 #define AppExe "Unbubble.exe"
 
 [Setup]

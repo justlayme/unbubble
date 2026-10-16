@@ -8,7 +8,7 @@ Unbubble handles people's most private conversations, so security reports get pr
 
 | Boundary | Protection |
 | --- | --- |
-| Other websites → helper | Loopback-only listener. WebSocket `Origin` must be thegreymirror.com, justlay.me or the helper's own UI. Requests with a non-loopback `Host` are rejected (DNS rebinding). `/control/url` refuses any request carrying an `Origin`. |
+| Other websites → helper | Loopback-only listener. WebSocket `Origin` must be thegreymirror.com or the helper's own UI. Requests with a non-loopback `Host` are rejected (DNS rebinding). `/control/url` refuses any request carrying an `Origin`. |
 | Malicious `unbubble://pair` links | Relay host allowlist (`relay.thegreymirror.com` only). The first pairing from a browser key needs a native **Allow** prompt showing a short code derived from both public keys. |
 | Relay operator / network | ECDH P-256 → HKDF-SHA256 → AES-256-GCM per direction. The web public key is delivered out of band (OS URL handler), so the relay cannot substitute it. Counter nonces reject replays and reordering. |
 | Data at rest | Archives and per-device sync data live in the helper's app-data folder with owner-only permissions. People can delete exports and forget devices from the interface. |

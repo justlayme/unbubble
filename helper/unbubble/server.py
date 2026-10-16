@@ -29,7 +29,6 @@ UI_DIR = Path(__file__).parent / "ui"
 BOUND_PORT: Optional[int] = None
 PROD_ORIGINS = {
     "https://thegreymirror.com", "https://www.thegreymirror.com",
-    "https://justlay.me", "https://www.justlay.me",
 }
 DEV_ORIGINS = {"http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:4173"}
 

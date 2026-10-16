@@ -32,13 +32,13 @@ No accounts, no analytics, no telemetry.
 
 ```
 thegreymirror.com (browser)
-   │  Chrome, Edge, Firefox, Brave:  ws://127.0.0.1:47613  (origin-locked to thegreymirror.com / justlay.me)
+   │  Chrome, Edge, Firefox, Brave:  ws://127.0.0.1:47613  (origin-locked to thegreymirror.com)
    │  Safari:  wss://relay.thegreymirror.com  (end-to-end encrypted; the relay sees only ciphertext)
    ▼
 Unbubble (notification-area app on the PC)  ──USB──►  iPhone
 ```
 
-- **Direct.** The app listens only on loopback and accepts WebSocket connections whose `Origin` is thegreymirror.com or justlay.me (or its own UI). It rejects mismatched `Host` headers, which blocks DNS rebinding.
+- **Direct.** The app listens only on loopback and accepts WebSocket connections whose `Origin` is thegreymirror.com (or its own UI). It rejects mismatched `Host` headers, which blocks DNS rebinding.
 - **Relay, for Safari on Windows.** The page's ECDH P-256 public key reaches the app through the `unbubble://` link handler, never through the relay. Keys come from HKDF-SHA256 with one AES-256-GCM key per direction, and counter nonces reject replays. The first pairing from a browser needs a native **Allow** prompt with a matching code.
 
 ## Repository layout

@@ -230,3 +230,8 @@ def test_driver_mock_flow(monkeypatch):
     assert e.value.data["hint"] == "windows_drivers"
     asyncio.run(mock.install_driver(lambda *_: None))
     assert mock.devices()[0]["state"] == "ready"
+
+
+def test_only_thegreymirror_is_trusted():
+    from unbubble.server import PROD_ORIGINS
+    assert PROD_ORIGINS == {"https://thegreymirror.com", "https://www.thegreymirror.com"}
