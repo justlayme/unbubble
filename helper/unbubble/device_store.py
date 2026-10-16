@@ -61,7 +61,7 @@ def has_sync_state(udid: str) -> bool:
 
 def read_state(udid: str) -> dict:
     try:
-        return json.loads((store_dir(udid) / "state.json").read_text())
+        return json.loads((store_dir(udid) / "state.json").read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {}
 
@@ -69,7 +69,7 @@ def read_state(udid: str) -> dict:
 def write_state(udid: str, **fields) -> None:
     state = read_state(udid)
     state.update(fields)
-    (store_dir(udid) / "state.json").write_text(json.dumps(state, indent=2))
+    (store_dir(udid) / "state.json").write_text(json.dumps(state, indent=2), encoding="utf-8")
 
 
 def reset_sync_state(udid: str) -> None:

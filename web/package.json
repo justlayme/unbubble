@@ -9,7 +9,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b",
-    "build:app": "tsc -b && GM_BASE=/ vite build --outDir ../helper/unbubble/ui --emptyOutDir"
+    "build:app": "tsc -b && vite build --mode app --outDir ../helper/unbubble/ui --emptyOutDir"
   },
   "dependencies": {
     "react": "^19.3.1",

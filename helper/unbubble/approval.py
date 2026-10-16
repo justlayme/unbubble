@@ -30,7 +30,7 @@ def _fingerprint(browser_pk: bytes) -> str:
 
 def is_trusted(browser_pk: bytes) -> bool:
     try:
-        return _fingerprint(browser_pk) in json.loads(_trust_path().read_text())
+        return _fingerprint(browser_pk) in json.loads(_trust_path().read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return False
 
@@ -38,13 +38,13 @@ def is_trusted(browser_pk: bytes) -> bool:
 def remember(browser_pk: bytes) -> None:
     path = _trust_path()
     try:
-        trusted = json.loads(path.read_text())
+        trusted = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         trusted = []
     fp = _fingerprint(browser_pk)
     if fp not in trusted:
         trusted.append(fp)
-        path.write_text(json.dumps(trusted[-50:]))
+        path.write_text(json.dumps(trusted[-50:]), encoding="utf-8")
 
 
 def _ask_blocking(code: str) -> bool:

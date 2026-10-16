@@ -95,7 +95,7 @@ def test_all_exports(archive, tmp_path):
     root = run_export(archive, tmp_path / "out", ["html", "pdf", "json", "csv"])
     assert (root / "Open Messages.html").exists()
     assert len(list((root / "PDF").glob("*.pdf"))) == 3
-    data = json.loads(next((root / "Data/json").glob("Maya*.json")).read_text())
+    data = json.loads(next((root / "Data/json").glob("Maya*.json")).read_text(encoding="utf-8"))
     assert len(data["messages"]) == _by_title(archive, "Maya Okafor")["message_count"]
     assert (root / "Data/messages.csv").read_text(encoding="utf-8-sig").count("\n") > 500
     assert any(p.suffix == ".jpg" for p in (root / "viewer/media").iterdir())  # HEIC converted for browsers

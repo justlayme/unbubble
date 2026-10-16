@@ -38,16 +38,16 @@ class Archive:
         directory.mkdir(parents=True)
         manifest = {"id": archive_id, "source": source, "label": label, "created": int(time.time() * 1000),
                     "status": "building", **(extra or {})}
-        (directory / "manifest.json").write_text(json.dumps(manifest, indent=2))
+        (directory / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
         return directory
 
     @staticmethod
     def finalize(directory: Path, **fields: Any) -> None:
         path = directory / "manifest.json"
-        manifest = json.loads(path.read_text())
+        manifest = json.loads(path.read_text(encoding="utf-8"))
         manifest.update(fields)
         manifest["status"] = "ready"
-        path.write_text(json.dumps(manifest, indent=2))
+        path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     @staticmethod
     def list_all() -> list[dict]:
@@ -57,7 +57,7 @@ class Archive:
             if not mf.exists():
                 continue
             try:
-                manifest = json.loads(mf.read_text())
+                manifest = json.loads(mf.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
                 continue
             if manifest.get("status") != "ready":
@@ -70,7 +70,7 @@ class Archive:
         for d in archives_root().iterdir():
             mf = d / "manifest.json"
             try:
-                if not mf.exists() or json.loads(mf.read_text()).get("status") != "ready":
+                if not mf.exists() or json.loads(mf.read_text(encoding="utf-8")).get("status") != "ready":
                     shutil.rmtree(d, ignore_errors=True)
             except (OSError, json.JSONDecodeError):
                 shutil.rmtree(d, ignore_errors=True)
@@ -93,7 +93,7 @@ class Archive:
 
     @property
     def manifest(self) -> dict:
-        return json.loads((self.dir / "manifest.json").read_text())
+        return json.loads((self.dir / "manifest.json").read_text(encoding="utf-8"))
 
     # ---- queries --------------------------------------------------------------------------
 

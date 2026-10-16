@@ -19,6 +19,8 @@ jobs:
         shell: pwsh
         env: { GM_VERSION: "${{ github.ref_name }}" }
         run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
           $env:GM_VERSION = $env:GM_VERSION.TrimStart("v")
           cd web; npm ci; npm run build:app; cd ..\helper
           python -m pip install -e ".[dev]"

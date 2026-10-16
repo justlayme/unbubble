@@ -68,7 +68,7 @@ def run_windows_app(initial_url: Optional[str], open_ui: bool) -> None:
 
     def toggle_signin(icon, _item):
         win.set_start_at_signin(not win.start_at_signin())
-        choice.write_text("set")  # never override the person's choice again
+        choice.write_text("set", encoding="utf-8")  # never override the person's choice again
         icon.update_menu()
 
     def quit_app(icon, _item):
