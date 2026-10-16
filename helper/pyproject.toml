@@ -1,0 +1,43 @@
+[project]
+name = "unbubble"
+version = "1.0.0"
+description = "Free, open-source iPhone message exporter for Windows. No full backup. Powers thegreymirror.com/export."
+readme = "README.md"
+license = "GPL-3.0-or-later"
+requires-python = ">=3.11"
+authors = [{ name = "Grey Mirror" }]
+dependencies = [
+  "pymobiledevice3>=11.32",   # GPL-3.0-or-later: iPhone pairing and the backup protocol
+  "pyiosbackup>=0.2",         # GPL: unpacking (and decrypting) captured files
+  "pytypedstream>=0.1",       # LGPL-3.0: decoding attributedBody message text
+  "aiohttp>=3.10",
+  "cryptography>=43",
+  "reportlab>=4.2",
+  "pillow>=11",
+  "pillow-heif>=0.20",
+  "phonenumbers>=8.13",
+  "pystray>=0.19; sys_platform == 'win32'",  # LGPL-3.0: the notification-area icon
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pyinstaller>=6.11"]
+
+[project.scripts]
+unbubble = "unbubble.__main__:main"
+
+[project.urls]
+Homepage = "https://thegreymirror.com/export"
+Source = "https://github.com/justlayme/unbubble"
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["unbubble*"]
+
+[tool.setuptools.package-data]
+unbubble = ["fonts/*", "assets/*", "exporters/viewer/*", "ui/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

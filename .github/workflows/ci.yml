@@ -1,0 +1,53 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request:
+
+jobs:
+  helper:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    defaults: { run: { working-directory: helper } }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.13" }
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m pytest -q
+
+  web:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: web } }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: npm, cache-dependency-path: web/package-lock.json }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  relay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
+      - run: npm ci && npm run typecheck
+        working-directory: relay
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.13" }
+      - run: python -m pip install -e "helper[dev]"
+      # Cross-language check: the browser crypto (crypto.ts) against the Python helper via the relay.
+      - name: Encrypted relay end-to-end
+        run: |
+          python helper/tests/make_fixture.py /tmp/fixture 200
+          GM_DATA_DIR=/tmp/gm python -m unbubble import-db /tmp/fixture/HomeDomain/Library/SMS/sms.db \
+            --contacts /tmp/fixture/HomeDomain/Library/AddressBook/AddressBook.sqlitedb --media /tmp/fixture/MediaDomain
+          (cd relay && node dev-relay.mjs 8787 &)
+          (cd helper && GM_DATA_DIR=/tmp/gm GM_DEV=1 GM_AUTO_APPROVE=1 GM_RELAY_HOSTS=localhost python -m unbubble serve &)
+          sleep 3
+          node tests/relay_e2e.mts
+        working-directory: .

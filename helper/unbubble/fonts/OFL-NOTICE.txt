@@ -1,0 +1,2 @@
+Noto Sans, Noto Emoji, Noto Sans Symbols 2 and Noto Sans JP are licensed under the SIL Open Font License 1.1
+(https://openfontlicense.org). Static instances were generated from the Google Fonts variable releases.

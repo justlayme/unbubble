@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+*.egg-info/
+__pycache__/
+.pytest_cache/
+.wrangler/
+helper/unbubble/ui/
+*.pyc
+.DS_Store
+*.tsbuildinfo

@@ -1,0 +1,37 @@
+# Tag v1.2.3 → the Windows installer attached to a GitHub Release. thegreymirror.com's download button
+# points at releases/latest/download/Unbubble-Setup.exe, so that file name must not change.
+name: Release
+on:
+  push: { tags: ["v*"] }
+
+permissions: { contents: write }
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.13" }
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
+      - name: Build the app UI, the helper and the installer
+        shell: pwsh
+        env: { GM_VERSION: "${{ github.ref_name }}" }
+        run: |
+          $env:GM_VERSION = $env:GM_VERSION.TrimStart("v")
+          cd web; npm ci; npm run build:app; cd ..\helper
+          python -m pip install -e ".[dev]"
+          python -m pytest -q
+          python -m PyInstaller --noconfirm --clean packaging\unbubble.spec
+          choco install innosetup -y --no-progress
+          iscc packaging\windows\installer.iss
+      # Code signing: add SignPath Foundation (free for open source) or Azure Trusted Signing here.
+      - run: Get-FileHash helper\dist\Unbubble-Setup.exe -Algorithm SHA256 | Format-List | Out-File helper\dist\SHA256.txt
+        shell: pwsh
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            helper/dist/Unbubble-Setup.exe
+            helper/dist/SHA256.txt
+          generate_release_notes: true

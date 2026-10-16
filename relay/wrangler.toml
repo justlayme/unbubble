@@ -1,0 +1,16 @@
+name = "unbubble-relay"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+routes = [{ pattern = "relay.thegreymirror.com", custom_domain = true }]
+
+[vars]
+ALLOWED_ORIGINS = "https://thegreymirror.com,https://www.thegreymirror.com,https://justlay.me,https://www.justlay.me"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Room"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
