@@ -15,12 +15,13 @@ interface Props {
   onCaptureStarted: (info: { name: string; udid: string }) => void;
   onOpenArchive: (id: string) => void;
   onNeedPassword: (udid: string | null) => void;
+  onRecording: () => void;
   onBack?: () => void;
 }
 
 type DriverState = { phase: "idle" } | { phase: "working"; message: string } | { phase: "failed"; explanation: Explanation };
 
-export function Connect({ error, passwordFor, onDismissError, onCaptureStarted, onOpenArchive, onNeedPassword, onBack }: Props) {
+export function Connect({ error, passwordFor, onDismissError, onCaptureStarted, onOpenArchive, onNeedPassword, onRecording, onBack }: Props) {
   const status = useConnectStatus();
   const connected = status.state === "connected";
   const hello: Hello | null = connected ? status.hello : null;
@@ -127,6 +128,17 @@ export function Connect({ error, passwordFor, onDismissError, onCaptureStarted, 
               </li>
             ))}
           </ol>
+          {connected && (
+            <div className="alt-route">
+              <p>
+                <b>Rather not plug in?</b> Screen-record a conversation on your iPhone while you scroll it, and Unbubble turns
+                the video into the same export.
+              </p>
+              <button className="btn btn-quiet" onClick={onRecording}>
+                Use a screen recording
+              </button>
+            </div>
+          )}
         </section>
 
         <section className="mirror" aria-live="polite">
@@ -216,7 +228,7 @@ export function Connect({ error, passwordFor, onDismissError, onCaptureStarted, 
             {archives.map((a) => (
               <li key={a.id}>
                 <div>
-                  <div>{a.device_name ?? a.label}</div>
+                  <div>{a.source === "screen_recording" ? a.label : a.device_name ?? a.label}</div>
                   <div className="meta">
                     {fmtShort(a.created)}, {count(a.messages, "message")}, {count(a.threads, "conversation")}
                     {a.first_ts ? `, ${span(a.first_ts, a.last_ts)}` : ""}

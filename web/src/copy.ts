@@ -36,6 +36,10 @@ export function explain(code: string, hint?: string, fallback?: string): Explana
         body: "Install the free Apple Devices app from the Microsoft Store instead; it includes the same driver. Then plug your iPhone back in.",
         action: { label: "Open Microsoft Store", kind: "link", href: "ms-windows-store://pdp/?productid=9NP83LWLPZ9K" },
       };
+    case "recording":
+      return { title: "That recording couldn't be read", body: fallback ?? "Try another recording.", action: { label: "Try again", kind: "retry" } };
+    case "device":
+      return { title: "Couldn't see your iPhone's videos", body: fallback ?? "Unlock your iPhone and make sure it trusts this PC.", action: { label: "Try again", kind: "retry" } };
     case "busy":
       return { title: "Another export is running", body: "Wait for it to finish, then try again." };
     case "disconnected":

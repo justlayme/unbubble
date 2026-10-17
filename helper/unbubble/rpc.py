@@ -19,6 +19,7 @@ from typing import Any, Awaitable, Callable, Optional
 from . import PROTOCOL_VERSION, __version__, device_store
 from .archive import Archive
 from .capture import CaptureError, capture_device, list_devices
+from .recording import RecordingError
 from . import mock
 from . import windows_support as win
 from .media import browser_image, guess_mime
@@ -47,7 +48,7 @@ class Hub:
 
     def broadcast(self, event: str, data: dict) -> None:
         msg = {"event": event, "data": data}
-        if event.startswith(("capture.", "export.")):
+        if event.startswith(("capture.", "export.", "recording.")):
             self.last_job_event = msg
         for s in list(self.sessions):
             s.push(msg)
@@ -160,6 +161,8 @@ class Rpc:
                 raise
             except CaptureError as e:
                 HUB.broadcast(f"{kind}.failed", {"code": e.code, "message": str(e), **e.data})
+            except RecordingError as e:
+                HUB.broadcast(f"{kind}.failed", {"code": "recording", "message": str(e)})
             except Exception as e:
                 traceback.print_exc()
                 HUB.broadcast(f"{kind}.failed", {"code": "internal", "message": str(e)})
@@ -179,6 +182,122 @@ class Rpc:
             HUB.job.cancel()
             return {"cancelled": True}
         return {"cancelled": False}
+
+    # ---- screen recordings ------------------------------------------------------------------
+    # Someone records their Messages thread on the iPhone while scrolling; the app reads the video
+    # on this PC (nothing leaves it) and saves the conversation like any other export.
+
+    async def m_recording_choose(self) -> dict:
+        chosen = await asyncio.to_thread(win.choose_video, win.videos_dir())
+        if not chosen:
+            return {"path": None}
+        p = Path(chosen)
+        return {"path": str(p), "name": p.name, "bytes": p.stat().st_size if p.exists() else 0}
+
+    async def m_recording_device_videos(self, udid: str) -> list[dict]:
+        from .recording import list_device_videos
+
+        if mock.enabled() and udid == mock.MOCK_UDID:
+            return mock.device_videos()
+        try:
+            return await list_device_videos(udid)
+        except RecordingError:
+            raise
+        except Exception as e:
+            raise RpcError("device", "Couldn't read the iPhone's videos. Unlock it and make sure it trusts this PC.",
+                           detail=type(e).__name__) from e
+
+    async def m_recording_start(
+        self, path: Optional[str] = None, udid: Optional[str] = None, device_path: Optional[str] = None,
+        recorded_at: Optional[str] = None,
+    ) -> dict:
+        import threading
+        from datetime import datetime
+
+        from .recording import pull_device_video, read_recording, recording_created_at, write_archive
+        from .util import data_dir
+
+        if not path and not (udid and device_path):
+            raise RpcError("bad_request", "Choose a screen recording first")
+        loop = asyncio.get_running_loop()
+        stop = threading.Event()
+
+        def progress(fraction: float, message: str) -> None:
+            loop.call_soon_threadsafe(HUB.broadcast, "recording.progress",
+                                      {"fraction": round(fraction, 4), "message": message})
+
+        async def job() -> str:
+            temp: Optional[Path] = None
+            try:
+                if path:
+                    video = Path(path)
+                    if not video.is_file():
+                        raise RecordingError("That video is no longer there.")
+                elif mock.enabled() and udid == mock.MOCK_UDID:
+                    video = mock.device_video_path(device_path)
+                else:
+                    name = Path(device_path).name
+                    temp = data_dir() / "tmp" / f"rec-{os.getpid()}-{name}"
+                    await pull_device_video(udid, device_path, temp,
+                                            lambda f, m: progress(f * 0.15, m))
+                    video = temp
+                when = datetime.fromisoformat(recorded_at) if recorded_at else None
+                if when is None and temp is not None:
+                    when = recording_created_at(temp)
+
+                def scaled(f: float, m: str) -> None:
+                    progress((0.15 + 0.85 * f) if temp else f, m)
+
+                result = await asyncio.to_thread(read_recording, video, progress=scaled, cancel=stop, recorded_at=when)
+                return await asyncio.to_thread(write_archive, result, Path(device_path or path).name)
+            except asyncio.CancelledError:
+                stop.set()
+                raise
+            finally:
+                if temp is not None:
+                    temp.unlink(missing_ok=True)
+
+        self._start_job("recording", job())
+        return {"started": True}
+
+    async def m_recording_info(self, archive_id: str) -> dict:
+        """What the confirm screen shows: the people found, the recording date, anything unsure."""
+        import json
+
+        a = HUB.archive(archive_id)
+        side = a.dir / "recording.json"
+        if not side.exists():
+            raise RpcError("not_found", "This conversation wasn't made from a screen recording")
+        data = json.loads(side.read_text(encoding="utf-8"))
+        senders: dict[str, int] = {}
+        for m in data["messages"]:
+            if not m["from_me"]:
+                key = data["title"] if not data["is_group"] else m["sender"]
+                senders[key] = senders.get(key, 0) + 1
+        unsure = sum(1 for m in data["messages"] if m["text"].startswith("[") or m["confidence"] < 0.6)
+        return {
+            "title": data.get("title_override") or data["title"], "is_group": data["is_group"],
+            "recorded_at": data["recorded_at"], "video": data["video"], "names": data.get("names", {}),
+            "people": [{"name": k, "messages": v} for k, v in sorted(senders.items(), key=lambda kv: -kv[1])],
+            "messages": len(data["messages"]), "unsure": unsure,
+            "warnings": a.manifest.get("warnings", []),
+        }
+
+    async def m_recording_update(
+        self, archive_id: str, recorded_at: Optional[str] = None, names: Optional[dict] = None,
+        title: Optional[str] = None,
+    ) -> dict:
+        from .recording import update_archive
+
+        if HUB.job and not HUB.job.done():
+            raise RpcError("busy", f"Wait for the current {HUB.job_kind} to finish")
+        a = HUB.archives.pop(archive_id, None) or Archive(archive_id)
+        a.close()
+        try:
+            await asyncio.to_thread(update_archive, a.dir, recorded_at=recorded_at, names=names, title=title)
+        except RecordingError as e:
+            raise RpcError("recording", str(e)) from e
+        return {"summary": HUB.archive(archive_id).summary()}
 
     # ---- Windows: Apple's iPhone driver --------------------------------------------------------
 

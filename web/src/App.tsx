@@ -7,11 +7,13 @@ import { explain, type Explanation } from "./copy";
 import { Capture, type CaptureState } from "./screens/Capture";
 import { Connect } from "./screens/Connect";
 import { Library, type UploadPayload } from "./screens/Library";
+import { Recording } from "./screens/Recording";
 import { getClient, useConnectStatus, useHelperEvents, withTransition } from "./useHelper";
 
 type View =
   | { name: "connect" }
   | { name: "capture"; state: CaptureState; udid?: string }
+  | { name: "recording"; resume?: boolean }
   | { name: "library"; archiveId: string };
 
 export interface UnbubbleAppProps {
@@ -46,6 +48,8 @@ export function UnbubbleApp({ onUpload, uploadLabel = "Upload", onBack, brand }:
     if (status.state !== "connected" || !status.hello.job) return;
     if (status.hello.job.kind === "capture") {
       setView({ name: "capture", state: { name: "Your iPhone", phase: "stream", fraction: 0, message: "Reconnecting to the export in progress", incremental: false } });
+    } else if (status.hello.job.kind === "recording") {
+      setView({ name: "recording", resume: true });
     }
   }, [status]);
 
@@ -119,6 +123,14 @@ export function UnbubbleApp({ onUpload, uploadLabel = "Upload", onBack, brand }:
             })
           }
           onOpenArchive={(id) => go({ name: "library", archiveId: id })}
+          onRecording={() => go({ name: "recording" })}
+        />
+      )}
+      {view.name === "recording" && (
+        <Recording
+          resume={view.resume}
+          onBack={() => go({ name: "connect" })}
+          onDone={(id) => go({ name: "library", archiveId: id })}
         />
       )}
       {view.name === "capture" && <Capture state={view.state} onCancel={() => void getClient().call("job.cancel", {})} />}

@@ -86,3 +86,24 @@ async def capture(emit: Emit) -> str:
     Archive.finalize(directory, threads=result.threads, messages=result.messages, attachments=result.attachments,
                      missing_attachments=result.missing_attachments, first_ts=result.first_ts, last_ts=result.last_ts)
     return directory.name
+
+
+# ---- screen recordings on the mock iPhone ---------------------------------------------------
+# GM_MOCK_RECORDING points at a local video; the mock iPhone shows it as its newest screen recording.
+
+def device_videos() -> list[dict]:
+    path = os.environ.get("GM_MOCK_RECORDING")
+    if not path or not Path(path).is_file():
+        return []
+    p = Path(path)
+    return [{"path": "/DCIM/100APPLE/RPReplay_Final1792180000.MP4", "name": "RPReplay_Final1792180000.MP4",
+             "bytes": p.stat().st_size, "modified": int(p.stat().st_mtime * 1000), "likely_screen_recording": True}]
+
+
+def device_video_path(device_path: str) -> Path:
+    path = os.environ.get("GM_MOCK_RECORDING")
+    if not path or not device_videos() or device_path != device_videos()[0]["path"]:
+        from .recording import RecordingError
+
+        raise RecordingError("That video is no longer on the iPhone.")
+    return Path(path)

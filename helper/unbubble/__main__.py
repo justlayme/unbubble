@@ -4,6 +4,7 @@
     unbubble --background          run the helper only (used at login)
     unbubble unbubble://pair?... hand a link to the running helper (or start and use it)
     unbubble import-db <sms.db|chat.db> [--contacts AddressBook.sqlitedb] [--media DIR]
+    unbubble import-recording <screen-recording.mp4|.mov> [--recorded-at 2026-10-16T21:30]
     unbubble export <archive-id> [--formats html,pdf,json,csv] [--out DIR]
     unbubble list
 """
@@ -117,6 +118,27 @@ def _cli_export(args: argparse.Namespace) -> None:
     print(f"\nSaved to {out}")
 
 
+def _cli_import_recording(args) -> None:
+    from datetime import datetime
+
+    from .recording import RecordingError, read_recording, write_archive
+
+    def progress(fraction: float, message: str) -> None:
+        print(f"\r{fraction * 100:5.1f}%  {message:<60}", end="", flush=True)
+
+    try:
+        when = datetime.fromisoformat(args.recorded_at) if args.recorded_at else None
+        result = read_recording(Path(args.video), progress=progress, recorded_at=when)
+    except RecordingError as e:
+        print(f"\n{e}")
+        raise SystemExit(1) from e
+    archive_id = write_archive(result, Path(args.video).name)
+    print(f"\n{archive_id}  {result.title}: {len(result.messages)} messages"
+          f"{' (group)' if result.is_group else ''}, recorded {result.recorded_at:%Y-%m-%d %H:%M}")
+    for w in result.warnings:
+        print(f"  note: {w}")
+
+
 def main(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv:  # opened by the person: show the app
@@ -136,6 +158,9 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--contacts")
     p.add_argument("--media")
     p.add_argument("--label")
+    p = sub.add_parser("import-recording")
+    p.add_argument("video")
+    p.add_argument("--recorded-at", help="when it was recorded, e.g. 2026-10-16T21:30 (default: from the video)")
     p = sub.add_parser("export")
     p.add_argument("archive")
     p.add_argument("--formats", default="html,pdf,json,csv")
@@ -146,6 +171,8 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.cmd == "import-db":
         _cli_import(args)
+    elif args.cmd == "import-recording":
+        _cli_import_recording(args)
     elif args.cmd == "export":
         _cli_export(args)
     elif args.cmd == "list":

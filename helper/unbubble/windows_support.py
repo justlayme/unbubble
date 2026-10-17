@@ -136,6 +136,42 @@ def choose_folder(initial: Path) -> Optional[str]:
     return chosen or None
 
 
+def choose_video(initial: Path) -> Optional[str]:
+    """Native file picker for a screen recording. Returns None if the person cancels."""
+    try:
+        if IS_WINDOWS:
+            script = (
+                "Add-Type -AssemblyName System.Windows.Forms;"
+                "$d = New-Object System.Windows.Forms.OpenFileDialog;"
+                "$d.Title = 'Choose your screen recording';"
+                "$d.Filter = 'Screen recordings (*.mp4;*.mov;*.m4v)|*.mp4;*.mov;*.m4v|All files (*.*)|*.*';"
+                f"$d.InitialDirectory = '{str(initial).replace(chr(39), chr(39) * 2)}';"
+                "$f = New-Object System.Windows.Forms.Form -Property @{TopMost=$true; ShowInTaskbar=$false};"
+                "if ($d.ShowDialog($f) -eq 'OK') { [Console]::Out.Write($d.FileName) }"
+            )
+            r = _run(["powershell", "-NoProfile", "-STA", "-Command", script], timeout=600)
+        elif sys.platform == "darwin":
+            r = _run(["osascript", "-e",
+                      'POSIX path of (choose file with prompt "Choose your screen recording" of type {"public.movie"})'],
+                     timeout=600)
+        else:
+            r = _run(["zenity", "--file-selection", "--file-filter=*.mp4 *.mov *.m4v", f"--filename={initial}/"],
+                     timeout=600)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    chosen = r.stdout.strip()
+    return chosen or None
+
+
+def videos_dir() -> Path:
+    """Where Windows puts videos imported from an iPhone (falls back to Downloads, then home)."""
+    home = Path.home()
+    for candidate in (home / "Pictures", home / "Videos", home / "Downloads"):
+        if candidate.is_dir():
+            return candidate
+    return home
+
+
 def reveal(path: Path) -> None:
     if IS_WINDOWS:
         subprocess.Popen(["explorer", str(path)], creationflags=NO_WINDOW)

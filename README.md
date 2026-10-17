@@ -27,6 +27,7 @@ Grey Mirror's upload wizard asks where someone's messages live. People with only
    - attachments offloaded to iCloud, clearly flagged
 5. **Saves to your PC** as a browsable offline HTML archive, one PDF per conversation, CSV, or JSON. It defaults to your real Documents folder and warns before saving into OneDrive, which would upload your messages to the cloud.
 6. **Uploads to Grey Mirror only when you choose to,** one conversation at a time.
+7. **Turns a screen recording into a conversation.** No cable needed: screen-record a thread in Messages while you scroll back through it, and Unbubble reads every message, who sent it and the time header it sits under. Pick the video on your PC, or plug in the iPhone and pick it straight from its camera roll. It's read entirely on your PC with on-device OCR and saved like any other export, so CSV, PDF, HTML, JSON and the upload all work.
 
 No accounts, no analytics, no telemetry.
 
@@ -76,6 +77,7 @@ cd web && npm install && npm test && npm run dev     # http://127.0.0.1:5173/exp
 Useful app commands:
 
 - `unbubble import-db <sms.db>` imports a Messages database directly.
+- `unbubble import-recording <video.mp4|.mov> [--recorded-at 2026-10-16T21:30]` reads a screen recording.
 - `unbubble export <archive-id> --formats html,pdf,json,csv` runs an export from the command line.
 
 ## Embed on thegreymirror.com
@@ -95,7 +97,7 @@ import { UnbubbleApp } from "unbubble-web";
 />
 ```
 
-Sites that want their own interface can use `ConnectClient` directly and call the app's RPC methods (`devices.list`, `capture.start`, `archive.threads`, `archive.thread_dump`, …).
+Sites that want their own interface can use `ConnectClient` directly and call the app's RPC methods (`devices.list`, `capture.start`, `recording.start`, `archive.threads`, `archive.thread_dump`, …).
 
 Configure with `VITE_GM_RELAY_URL`, `VITE_GM_SITE_URL`, `VITE_GM_SOURCE_URL` and `VITE_GM_DOWNLOAD_WIN`.
 
@@ -110,5 +112,12 @@ Sign the installer to avoid SmartScreen warnings. Open-source projects can get f
 - The **first** export takes about as long as an iPhone backup, because iOS sends everything once and the app discards what isn't Messages. Later exports are incremental. A USB 3 cable with a USB‑C iPhone is much faster.
 - If the iPhone has **"Encrypt local backup"** on, the person enters that password once. It never leaves their PC.
 - Attachments iOS **offloaded to iCloud** aren't on the phone, so they're listed but can't be exported.
+- **Screen recordings** show only what was on screen. iOS doesn't let apps scroll Messages, so the person scrolls while recording, slowly enough that each bubble is on screen for a moment. Times come from Messages' own headers, so messages under one header share its time, and anything above the first header in the recording is undated. Emoji, photos and stickers are kept as placeholders like `[Emoji]`; tapbacks and attachments aren't captured. Reading takes about a second per screenful of messages.
+
+### How screen recordings are read
+
+`helper/unbubble/recording.py`. A motion pass follows the scroll frame to frame (phase correlation), which places every frame in one long "thread" coordinate and finds the fixed status bar, header and text field. Key frames are chosen so each stretch of the thread is seen whole, and only the part not yet read is OCR'd (RapidOCR, ONNX, on the CPU). Bubbles are found by colour (blue or green from you, grey from them, light or dark mode); centred grey lines are time headers ("Today 9:41 AM", "Saturday 1:30 AM", "Sat, Oct 11 at 3:20 PM"), and small names above grey bubbles are group senders. Everything is stitched by position, so a bubble seen in ten frames is kept once, while two identical messages sent at different times are both kept.
+
+`python tests/recording_fixture.py OUT` and `tests/record_fixture.mjs` render and scroll a Messages look-alike at iPhone resolution with exact ground truth, and `python tests/eval_recording.py OUT` scores the reader against it. On the current fixtures (light, dark, one-to-one and group; H.264 and HEVC) it reproduces every message word for word, apart from emoji shown as `[Emoji]`.
 
 See [SECURITY.md](SECURITY.md) to report a vulnerability privately.

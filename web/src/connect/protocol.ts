@@ -15,7 +15,7 @@ export interface Hello {
   /** Apple's iPhone driver (always ready outside Windows). */
   drivers: DriverStatus;
   export_dir: string;
-  job: { kind: "capture" | "export"; last: ServerEvent | null } | null;
+  job: { kind: "capture" | "export" | "recording"; last: ServerEvent | null } | null;
 }
 
 export interface DriverStatus {
@@ -38,7 +38,7 @@ export interface Device {
 
 export interface ArchiveInfo {
   id: string;
-  source: "iphone" | "mac" | "import";
+  source: "iphone" | "mac" | "import" | "screen_recording";
   label: string;
   device_name?: string;
   model?: string;
@@ -53,6 +53,9 @@ export interface ArchiveInfo {
   last_ts?: number | null;
   incremental?: boolean;
   new_files?: number;
+  /** Screen recordings: the video it was read from, and when it was recorded (local time). */
+  video?: string;
+  recorded_at?: string | null;
 }
 
 export interface Person {
@@ -154,6 +157,10 @@ export type ServerEvent =
   | { event: "export.done"; data: { archive_id: string } }
   | { event: "export.failed"; data: HelperErrorData }
   | { event: "export.cancelled"; data: Record<string, never> }
+  | { event: "recording.progress"; data: { fraction: number; message: string } }
+  | { event: "recording.done"; data: { archive_id: string; summary: Summary } }
+  | { event: "recording.failed"; data: HelperErrorData }
+  | { event: "recording.cancelled"; data: Record<string, never> }
   | { event: "drivers.progress"; data: { phase: "installing" | "starting"; message: string } };
 
 export type CapturePhase = "trust" | "stream" | "unpack" | "rebuild";
@@ -173,6 +180,29 @@ export class HelperError extends Error {
     this.code = data.code;
     this.data = data;
   }
+}
+
+/** A video in the connected iPhone's camera roll. */
+export interface DeviceVideo {
+  path: string;
+  name: string;
+  bytes: number;
+  modified: number;
+  likely_screen_recording: boolean;
+}
+
+/** What was read from a screen recording, for the confirm step. */
+export interface RecordingInfo {
+  title: string;
+  is_group: boolean;
+  recorded_at: string | null;
+  video: string;
+  names: Record<string, string>;
+  people: { name: string; messages: number }[];
+  messages: number;
+  /** Bubbles shown as [Emoji], [Photo or attachment] or read with low confidence. */
+  unsure: number;
+  warnings: string[];
 }
 
 /** Everything the helper can be asked, with parameter and result types. */
@@ -200,6 +230,14 @@ export interface Methods {
   ];
   "export.reveal": [{ path: string }, { ok: boolean }];
   "export.choose_folder": [{ initial?: string }, { path: string | null; cloud_synced?: boolean }];
+  "recording.choose": [Record<string, never>, { path: string | null; name?: string; bytes?: number }];
+  "recording.device_videos": [{ udid: string }, DeviceVideo[]];
+  "recording.start": [{ path?: string; udid?: string; device_path?: string; recorded_at?: string }, { started: boolean }];
+  "recording.info": [{ archive_id: string }, RecordingInfo];
+  "recording.update": [
+    { archive_id: string; recorded_at?: string; names?: Record<string, string>; title?: string },
+    { summary: Summary },
+  ];
   "export.check_folder": [{ path: string }, { path: string; cloud_synced: boolean; exists: boolean }];
 }
 export type Method = keyof Methods;

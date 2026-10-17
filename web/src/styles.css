@@ -205,6 +205,63 @@
 .phases li[data-state="done"] { color: var(--ink); }
 .phases li[data-state="done"]::before { background: var(--graphite); box-shadow: none; }
 
+/* ---- screen recordings ---------------------------------------------------------------------- */
+.alt-route { margin-top: 36px; max-width: 420px; padding-top: 22px; border-top: 1px solid color-mix(in oklab, var(--haze) 70%, transparent);
+  display: grid; gap: 12px; justify-items: start; }
+.alt-route p { color: var(--graphite); font-size: 14.5px; line-height: 1.5; }
+.alt-route b { color: var(--ink); font-weight: 560; }
+
+/* A small phone with a thread scrolling past and a recording dot: what the person is about to do. */
+.rec-demo { position: relative; width: 112px; height: 200px; border-radius: 28px; overflow: hidden;
+  box-shadow: inset 0 0 0 1.5px var(--ink), inset 0 0 0 7px color-mix(in oklab, var(--silver) 70%, transparent);
+  mask-image: radial-gradient(white, white); }
+.rec-strip { position: absolute; inset: 0 12px; display: flex; flex-direction: column; gap: 7px; padding-top: 30px;
+  animation: rec-scroll 9s cubic-bezier(.2,.7,.3,1) infinite; }
+.rec-strip span { display: block; flex: none; height: 14px; border-radius: 8px; background: color-mix(in oklab, var(--ink) 12%, transparent); }
+.rec-strip span.me { align-self: flex-end; background: color-mix(in oklab, var(--ink) 30%, transparent); }
+@keyframes rec-scroll { /* scrolling back up the thread in flicks, as the person will */
+  0%, 8% { transform: translateY(-50%); } 30%, 38% { transform: translateY(-34%); }
+  60%, 68% { transform: translateY(-17%); } 92%, 100% { transform: translateY(0); }
+}
+.rec-dot { position: absolute; z-index: 1; top: 12px; left: 50%; width: 26px; height: 8px; border-radius: 6px; transform: translateX(-50%);
+  background: var(--danger, #c4473a); animation: rec-pulse 1.6s ease-in-out infinite; }
+@keyframes rec-pulse { 50% { opacity: 0.45; } }
+
+/* While reading: a line sweeps down the glass over a slowly rising thread. */
+.rec-scan { position: absolute; inset: 0 0 auto 0; height: 38%; z-index: -1; overflow: hidden; pointer-events: none;
+  mask-image: linear-gradient(black 30%, transparent 92%); opacity: 0.8; }
+.rec-scan .rec-strip { inset: 0 30px; gap: 10px; padding-top: 28px; animation: rec-rise 14s linear infinite; }
+.rec-scan .rec-strip span { height: 26px; border-radius: 15px; }
+@keyframes rec-rise { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+.rec-line { position: absolute; left: 0; right: 0; height: 2px; top: 0;
+  background: linear-gradient(90deg, transparent, var(--tarnish), transparent);
+  box-shadow: 0 0 24px 4px color-mix(in oklab, var(--tarnish) 35%, transparent);
+  animation: rec-sweep 2.8s ease-in-out infinite alternate; }
+@keyframes rec-sweep { from { transform: translateY(18px); } to { transform: translateY(170px); } }
+
+.rec-videos { display: grid; gap: 8px; }
+.rec-videos ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.rec-videos button { width: 100%; display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  padding: 13px 16px; border: 0; border-radius: 14px; cursor: pointer; text-align: left; font: inherit; color: var(--ink);
+  background: color-mix(in oklab, var(--silver) 75%, transparent); box-shadow: inset 0 0 0 1px var(--haze);
+  transition: box-shadow 160ms ease, transform 160ms ease; }
+.rec-videos button:hover { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.rec-videos button:active { transform: scale(0.99); }
+.rec-videos small { color: var(--graphite); font-size: 13px; white-space: nowrap; }
+
+.rec-form { gap: 16px; }
+.rec-form label { display: grid; gap: 6px; }
+.rec-form label > span { font-size: 13px; color: var(--graphite); }
+.rec-notes { list-style: none; margin: 28px 0 0; padding: 0; display: grid; gap: 8px; max-width: 420px; font-size: 14px;
+  color: var(--graphite); }
+.rec-notes li { padding-left: 16px; position: relative; }
+.rec-notes li::before { content: ""; position: absolute; left: 0; top: 0.6em; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--haze); }
+
+@media (prefers-reduced-motion: reduce) {
+  .rec-strip, .rec-scan .rec-strip, .rec-line, .rec-dot { animation: none; }
+}
+
 /* ---- library ------------------------------------------------------------------------------ */
 .library { display: grid; grid-template-rows: auto 1fr; height: 100dvh; }
 .lib-head { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: end; justify-content: space-between;

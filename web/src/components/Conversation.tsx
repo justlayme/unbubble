@@ -155,7 +155,8 @@ export function Conversation({ archiveId, thread, anchorId, onBack, onJumpToLate
             {count(thread.message_count, "message")}
             {thread.first_ts ? `, ${span(thread.first_ts, thread.last_ts)}` : ""}
             {thread.participants.length > 0 &&
-              `, ${thread.participants.map((p) => p.addresses.join(", ")).join("; ")}`.slice(0, 160)}
+              thread.participants.some((p) => p.addresses.length > 0) &&
+              `, ${thread.participants.filter((p) => p.addresses.length > 0).map((p) => p.addresses.join(", ")).join("; ")}`.slice(0, 160)}
           </p>
         </div>
         {actions}
@@ -187,8 +188,12 @@ export function Conversation({ archiveId, thread, anchorId, onBack, onJumpToLate
           const showWho = thread.is_group && !m.from_me && (showDay || !prev || prev.sender_id !== m.sender_id || prev.from_me || prev.kind === "system");
           const images = m.attachments.filter((a) => isImage(a) && !a.missing);
           const others = m.attachments.filter((a) => !(isImage(a) && !a.missing));
+          // One time under each run of bubbles sent the same minute by the same side, as Messages does.
+          const next = messages[i + 1];
+          const time = fmtTime(m.ts);
+          const lastOfMinute = !next || next.kind === "system" || next.from_me !== m.from_me || fmtTime(next.ts) !== time || fmtDay(next.ts) !== day;
           const meta = [
-            fmtTime(m.ts),
+            lastOfMinute ? time : null,
             m.service && m.service !== "iMessage" ? m.service : null,
             m.effect ? `Sent with ${m.effect}` : null,
             m.app && m.app !== "link" ? m.app : null,
