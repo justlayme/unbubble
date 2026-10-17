@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import mark24 from "./assets/mark-24.png";
+import mark48 from "./assets/mark-48.png";
 import type { ServerEvent } from "./connect/protocol";
 import { HOST } from "./config";
 import { explain, type Explanation } from "./copy";
@@ -90,7 +92,11 @@ export function UnbubbleApp({ onUpload, uploadLabel = "Upload", onBack, brand }:
               {brand.name}
             </a>
           ) : (
-            <span className="wordmark">Unbubble</span>
+            <span className="wordmark">
+              {/* Drawn on whole pixels at 24 and 48; scaling it would blur the grid. */}
+              <img className="mark" src={mark24} srcSet={`${mark48} 2x`} width={24} height={24} alt="" />
+              Unbubble
+            </span>
           )}
           <span className="helper-pill" data-on={status.state === "connected"}>
             <i aria-hidden="true" />

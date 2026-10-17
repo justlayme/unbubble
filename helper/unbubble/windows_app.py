@@ -42,11 +42,32 @@ class _Server:
         webbrowser.open(f"http://127.0.0.1:{self.port or 47613}/")
 
 
+TRAY_SIZES = (16, 20, 24, 32, 40, 48)
+
+
 def _icon_image():
+    """The tray icon, with a hand-fitted image for every size Windows asks for.
+
+    pystray hands Windows an .ico it writes from this image, and Pillow fills
+    each size by shrinking the one image it is given, which smears the 16 px
+    pixel grid. Saving with `append_images` makes Pillow use the drawn sizes
+    instead, so the notification area stays crisp at 100% to 300% scaling.
+    """
     from PIL import Image
 
-    path = Path(__file__).parent / "assets" / "tray.png"
-    return Image.open(path)
+    assets = Path(__file__).parent / "assets"
+    base = Image.open(assets / "tray.png").convert("RGBA")
+    frames = [Image.open(assets / f"tray-{size}.png").convert("RGBA") for size in TRAY_SIZES]
+    original_save = base.save
+
+    def save(fp, format=None, **params):
+        if str(format or "").upper() == "ICO":
+            params.setdefault("sizes", [(s, s) for s in TRAY_SIZES] + [base.size])
+            params.setdefault("append_images", frames)
+        return original_save(fp, format=format, **params)
+
+    base.save = save
+    return base
 
 
 def run_windows_app(initial_url: Optional[str], open_ui: bool) -> None:

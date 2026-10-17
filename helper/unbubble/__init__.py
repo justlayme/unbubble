@@ -6,5 +6,5 @@ database. Everything the user sees lives on thegreymirror.com; this process only
 locked-down local WebSocket that accepts thegreymirror.com as its origin.
 """
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 PROTOCOL_VERSION = 1

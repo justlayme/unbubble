@@ -1,3 +1,5 @@
+<img src="helper/packaging/icon.png" width="96" height="96" alt="Unbubble">
+
 # Unbubble
 
 *Get your messages out of their bubbles.*
