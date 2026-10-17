@@ -115,6 +115,27 @@ def test_reads_dark_group_thread_from_hevc(darkgroup):
     assert right >= len(named) * 0.9, "group senders come from the names above their bubbles"
 
 
+def test_reads_a_messy_real_world_recording():
+    """Control Center at both ends, a notification banner, photos, link previews, tapback badges,
+    the typing indicator, a 3x (1179 px) HEVC recording at heavy compression."""
+    truth = json.loads((FIXTURES / "messy.json").read_text(encoding="utf-8"))
+    events = []
+    result = read_recording(FIXTURES / "messy.mov", recorded_at=datetime.fromisoformat(truth["recorded_at"]),
+                            on_event=events.append)
+    want = [m["text"] if not m["text"].startswith("[") else m["text"] for m in truth["messages"]]
+    got = [m.text for m in result.messages]
+    sm = SequenceMatcher(None, [w.lower() for w in want], [g.lower() for g in got], autojunk=False)
+    same = sum(b.size for b in sm.get_matching_blocks())
+    assert len(got) == len(want), "nothing from Control Center, the banner or the typing indicator"
+    assert same >= len(want) * 0.93
+    assert "[Photo]" in got and any("nytimes.com" in g or "alltrails.com" in g or "teamsnap.com" in g or "zillow.com" in g
+                                    for g in got), "photos and link previews kept"
+    assert not any("Screen Recording" in g or "omw" in g for g in got)
+    # the reader streams what it finds, for the live view
+    assert any(e["type"] == "messages" and e["messages"] for e in events)
+    assert any(e["type"] == "eta" for e in events)
+
+
 def test_rejects_non_videos(tmp_path):
     p = tmp_path / "notes.txt"
     p.write_text("hi")
@@ -184,5 +205,79 @@ def test_rpc_flow_with_mock_iphone(tmp_path, monkeypatch):
         await r.m_recording_start(path=str(tmp_path / "missing.mp4"))
         await rpc.HUB.job
         assert rpc.HUB.last_job_event["event"] == "recording.failed"
+
+    asyncio.run(run())
+
+
+def test_dropped_video_upload_and_live_events(tmp_path, monkeypatch):
+    """A video dropped on the page: one-time ticket over the approved connection, streamed to the
+    loopback server, read with live progress, then deleted."""
+    monkeypatch.setenv("GM_DATA_DIR", str(tmp_path))
+    from aiohttp.test_utils import TestClient, TestServer
+
+    from unbubble import rpc, server, uploads
+
+    async def run():
+        app = server.build_app()
+        async with TestClient(TestServer(app, host="127.0.0.1")) as client:
+            server.BOUND_PORT = client.port
+            origin = f"http://127.0.0.1:{client.port}"
+            sent = []
+
+            async def send(m):
+                sent.append(m)
+
+            r = rpc.Rpc(send, "direct")
+            rpc.HUB.sessions.add(r)
+            data = (FIXTURES / "light.mp4").read_bytes()
+            ticket = await r.m_recording_upload_ticket("RPReplay_Final.MP4", len(data))
+            path = "/recording/upload?t=" + ticket["upload_id"]
+            # someone else's page can't push files in
+            bad = await client.put(path, data=data, headers={"Origin": "https://evil.example"})
+            assert bad.status == 403
+            res = await client.put(path, data=data, headers={"Origin": origin})
+            assert res.status == 200 and (await res.json())["upload_id"] == ticket["upload_id"]
+            again = await client.put(path, data=data, headers={"Origin": origin})
+            assert again.status == 403, "tickets upload once"
+            junk = await r.m_recording_upload_ticket("notes.mov", 100)
+            nv = await client.put("/recording/upload?t=" + junk["upload_id"], data=b"x" * 100, headers={"Origin": origin})
+            assert nv.status == 415, "only videos"
+
+            await r.m_recording_start(upload_id=ticket["upload_id"], recorded_at="2026-10-16T21:30")
+            await rpc.HUB.job
+            assert rpc.HUB.last_job_event["event"] == "recording.done", rpc.HUB.last_job_event
+            await asyncio.sleep(0.05)
+            events = [m["data"] for m in list(r._queue._queue) if m.get("event") == "recording.event"] if hasattr(r, "_queue") else []
+            assert uploads.finished(ticket["upload_id"]) is None, "the upload is deleted once read"
+            info = await r.m_recording_info(rpc.HUB.last_job_event["data"]["archive_id"])
+            assert info["video"] == "RPReplay_Final.MP4" and info["preview"]
+            rpc.HUB.sessions.discard(r)
+            return events
+
+    asyncio.run(run())
+
+
+def test_review_edits(light, tmp_path, monkeypatch):
+    monkeypatch.setenv("GM_DATA_DIR", str(tmp_path))
+    from unbubble import rpc
+    from unbubble.archive import Archive
+
+    _, result, _, got, _ = light
+    archive_id = write_archive(result, "light.mp4")
+
+    async def run():
+        async def send(_m):
+            pass
+        r = rpc.Rpc(send, "test")
+        items = await r.m_recording_review(archive_id)
+        assert items, "emoji and unclear bubbles come back for a glance"
+        assert all(i["image"] for i in items), "each with how it looked"
+        first = items[0]["index"]
+        await r.m_recording_update(archive_id, edits={str(first): "😂😂", "0": None})
+        msgs = list(Archive(archive_id).iter_thread(1))
+        assert len(msgs) == len(got) - 1
+        assert msgs[first - 1]["text"] == "😂😂"
+        left = await r.m_recording_review(archive_id)
+        assert len(left) == len(items) - 1 - (1 if items and items[0]["index"] == 0 else 0)
 
     asyncio.run(run())

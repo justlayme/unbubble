@@ -187,6 +187,19 @@ class Rpc:
     # Someone records their Messages thread on the iPhone while scrolling; the app reads the video
     # on this PC (nothing leaves it) and saves the conversation like any other export.
 
+    async def m_recording_upload_ticket(self, name: str, bytes: int) -> dict:
+        """A one-time address to stream a dropped video to (direct connections only: the relay
+        carries messages, not gigabytes)."""
+        from . import server, uploads
+
+        if self.transport != "direct" or not server.BOUND_PORT:
+            raise RpcError("upload_unavailable", "Choose the video with the button instead")
+        try:
+            up = uploads.new_ticket(name, int(bytes))
+        except ValueError as e:
+            raise RpcError("recording", str(e)) from e
+        return {"upload_id": up.token, "url": f"http://127.0.0.1:{server.BOUND_PORT}/recording/upload?t={up.token}"}
+
     async def m_recording_choose(self) -> dict:
         chosen = await asyncio.to_thread(win.choose_video, win.videos_dir())
         if not chosen:
@@ -209,7 +222,7 @@ class Rpc:
 
     async def m_recording_start(
         self, path: Optional[str] = None, udid: Optional[str] = None, device_path: Optional[str] = None,
-        recorded_at: Optional[str] = None,
+        recorded_at: Optional[str] = None, upload_id: Optional[str] = None,
     ) -> dict:
         import threading
         from datetime import datetime
@@ -217,6 +230,14 @@ class Rpc:
         from .recording import pull_device_video, read_recording, recording_created_at, write_archive
         from .util import data_dir
 
+        from . import uploads
+
+        dropped = None
+        if upload_id:
+            dropped = uploads.finished(upload_id)
+            if dropped is None:
+                raise RpcError("recording", "That upload didn't finish. Drop the video again.")
+            path = str(dropped)
         if not path and not (udid and device_path):
             raise RpcError("bad_request", "Choose a screen recording first")
         loop = asyncio.get_running_loop()
@@ -225,6 +246,9 @@ class Rpc:
         def progress(fraction: float, message: str) -> None:
             loop.call_soon_threadsafe(HUB.broadcast, "recording.progress",
                                       {"fraction": round(fraction, 4), "message": message})
+
+        def on_event(event: dict) -> None:           # messages as they're found, time left
+            loop.call_soon_threadsafe(HUB.broadcast, "recording.event", event)
 
         async def job() -> str:
             temp: Optional[Path] = None
@@ -248,15 +272,23 @@ class Rpc:
                 def scaled(f: float, m: str) -> None:
                     progress((0.15 + 0.85 * f) if temp else f, m)
 
-                result = await asyncio.to_thread(read_recording, video, progress=scaled, cancel=stop, recorded_at=when)
-                return await asyncio.to_thread(write_archive, result, Path(device_path or path).name)
+                result = await asyncio.to_thread(read_recording, video, progress=scaled, cancel=stop,
+                                                 recorded_at=when, on_event=on_event)
+                name = dropped_name or Path(device_path or path).name
+                return await asyncio.to_thread(write_archive, result, name)
             except asyncio.CancelledError:
                 stop.set()
                 raise
             finally:
                 if temp is not None:
                     temp.unlink(missing_ok=True)
+                if upload_id:
+                    uploads.forget(upload_id)
 
+        dropped_name = None
+        if upload_id:
+            up = uploads._UPLOADS.get(upload_id)
+            dropped_name = up.name if up else None
         self._start_job("recording", job())
         return {"started": True}
 
@@ -274,18 +306,41 @@ class Rpc:
             if not m["from_me"]:
                 key = data["title"] if not data["is_group"] else m["sender"]
                 senders[key] = senders.get(key, 0) + 1
-        unsure = sum(1 for m in data["messages"] if m["text"].startswith("[") or m["confidence"] < 0.6)
+        unsure = sum(1 for m in data["messages"] if m.get("review"))
         return {
             "title": data.get("title_override") or data["title"], "is_group": data["is_group"],
             "recorded_at": data["recorded_at"], "video": data["video"], "names": data.get("names", {}),
             "people": [{"name": k, "messages": v} for k, v in sorted(senders.items(), key=lambda kv: -kv[1])],
             "messages": len(data["messages"]), "unsure": unsure,
+            "preview": [{"text": m["text"], "from_me": m["from_me"]} for m in data["messages"][-6:]],
             "warnings": a.manifest.get("warnings", []),
         }
 
+    async def m_recording_review(self, archive_id: str) -> list[dict]:
+        """Messages worth a glance (emoji, unreadable, low confidence), each with how it looked."""
+        import json
+
+        a = HUB.archive(archive_id)
+        side = a.dir / "recording.json"
+        if not side.exists():
+            raise RpcError("not_found", "This conversation wasn't made from a screen recording")
+        data = json.loads(side.read_text(encoding="utf-8"))
+        out = []
+        for i, m in enumerate(data["messages"]):
+            if not m.get("review"):
+                continue
+            img = a.dir / "review" / f"{m.get('crop_id', i)}.jpg"
+            out.append({
+                "index": i, "text": m["text"], "from_me": m["from_me"], "sender": m["sender"],
+                "image": base64.b64encode(img.read_bytes()).decode("ascii") if img.exists() else None,
+                "before": data["messages"][i - 1]["text"] if i > 0 else None,
+                "after": data["messages"][i + 1]["text"] if i + 1 < len(data["messages"]) else None,
+            })
+        return out
+
     async def m_recording_update(
         self, archive_id: str, recorded_at: Optional[str] = None, names: Optional[dict] = None,
-        title: Optional[str] = None,
+        title: Optional[str] = None, edits: Optional[dict] = None,
     ) -> dict:
         from .recording import update_archive
 
@@ -294,7 +349,7 @@ class Rpc:
         a = HUB.archives.pop(archive_id, None) or Archive(archive_id)
         a.close()
         try:
-            await asyncio.to_thread(update_archive, a.dir, recorded_at=recorded_at, names=names, title=title)
+            await asyncio.to_thread(update_archive, a.dir, recorded_at=recorded_at, names=names, title=title, edits=edits)
         except RecordingError as e:
             raise RpcError("recording", str(e)) from e
         return {"summary": HUB.archive(archive_id).summary()}

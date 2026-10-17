@@ -1,7 +1,7 @@
 {
   "name": "unbubble-web",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "description": "Unbubble's interface and SDK: export iPhone messages on Windows, standalone or embedded in a site.",
   "scripts": {

@@ -35,7 +35,53 @@ export function UnbubbleApp({ onUpload, uploadLabel = "Upload", onBack, brand }:
   const [view, setView] = useState<View>({ name: "connect" });
   const [error, setError] = useState<Explanation | null>(null);
   const [passwordFor, setPasswordFor] = useState<string | null>(null);
+  const [incoming, setIncoming] = useState<File | null>(null);
+  const [dragging, setDragging] = useState(false);
   const go = (v: View) => withTransition(() => setView(v));
+
+  // Drop a screen recording anywhere on the page to read it.
+  const canDrop = status.state === "connected" && status.transport !== "relay" && view.name !== "capture";
+  useEffect(() => {
+    if (!canDrop) {
+      setDragging(false);
+      return;
+    }
+    let depth = 0;
+    const hasFiles = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes("Files");
+    const enter = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      depth += 1;
+      setDragging(true);
+    };
+    const over = (e: DragEvent) => {
+      if (hasFiles(e)) e.preventDefault();
+    };
+    const leave = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      depth = Math.max(0, depth - 1);
+      if (depth === 0) setDragging(false);
+    };
+    const drop = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      depth = 0;
+      setDragging(false);
+      const file = e.dataTransfer?.files[0];
+      if (!file) return;
+      setIncoming(file);
+      withTransition(() => setView((v) => (v.name === "recording" ? v : { name: "recording" })));
+    };
+    window.addEventListener("dragenter", enter);
+    window.addEventListener("dragover", over);
+    window.addEventListener("dragleave", leave);
+    window.addEventListener("drop", drop);
+    return () => {
+      window.removeEventListener("dragenter", enter);
+      window.removeEventListener("dragover", over);
+      window.removeEventListener("dragleave", leave);
+      window.removeEventListener("drop", drop);
+    };
+  }, [canDrop]);
 
   // Quietly look for the helper on load (never triggers a pairing prompt).
   useEffect(() => {
@@ -129,9 +175,19 @@ export function UnbubbleApp({ onUpload, uploadLabel = "Upload", onBack, brand }:
       {view.name === "recording" && (
         <Recording
           resume={view.resume}
+          incoming={incoming}
+          onIncomingTaken={() => setIncoming(null)}
           onBack={() => go({ name: "connect" })}
           onDone={(id) => go({ name: "library", archiveId: id })}
         />
+      )}
+      {dragging && (
+        <div className="drop-veil" aria-hidden="true">
+          <div>
+            <h2>Drop to read it.</h2>
+            <p>Your screen recording is read on this PC and becomes a conversation you can export.</p>
+          </div>
+        </div>
       )}
       {view.name === "capture" && <Capture state={view.state} onCancel={() => void getClient().call("job.cancel", {})} />}
       {view.name === "library" && (

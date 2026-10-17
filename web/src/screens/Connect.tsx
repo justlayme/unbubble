@@ -131,8 +131,8 @@ export function Connect({ error, passwordFor, onDismissError, onCaptureStarted, 
           {connected && (
             <div className="alt-route">
               <p>
-                <b>Rather not plug in?</b> Screen-record a conversation on your iPhone while you scroll it, and Unbubble turns
-                the video into the same export.
+                <b>Rather not plug in?</b> Screen-record a conversation on your iPhone while you scroll it, then drop the
+                video here. Unbubble turns it into the same export.
               </p>
               <button className="btn btn-quiet" onClick={onRecording}>
                 Use a screen recording

@@ -158,6 +158,7 @@ export type ServerEvent =
   | { event: "export.failed"; data: HelperErrorData }
   | { event: "export.cancelled"; data: Record<string, never> }
   | { event: "recording.progress"; data: { fraction: number; message: string } }
+  | { event: "recording.event"; data: RecordingEvent }
   | { event: "recording.done"; data: { archive_id: string; summary: Summary } }
   | { event: "recording.failed"; data: HelperErrorData }
   | { event: "recording.cancelled"; data: Record<string, never> }
@@ -191,6 +192,22 @@ export interface DeviceVideo {
   likely_screen_recording: boolean;
 }
 
+/** Live while a recording is read: messages as they're found, and time left. */
+export type RecordingEvent =
+  | { type: "messages"; messages: { text: string; from_me: boolean }[]; found: number }
+  | { type: "eta"; seconds: number };
+
+/** A message worth a glance, with how it looked in the video (base64 JPEG). */
+export interface ReviewItem {
+  index: number;
+  text: string;
+  from_me: boolean;
+  sender: string;
+  image: string | null;
+  before: string | null;
+  after: string | null;
+}
+
 /** What was read from a screen recording, for the confirm step. */
 export interface RecordingInfo {
   title: string;
@@ -200,8 +217,10 @@ export interface RecordingInfo {
   names: Record<string, string>;
   people: { name: string; messages: number }[];
   messages: number;
-  /** Bubbles shown as [Emoji], [Photo or attachment] or read with low confidence. */
+  /** Messages worth a glance: emoji, unreadable bubbles, low-confidence readings. */
   unsure: number;
+  /** The last few messages, for a glance at the result. */
+  preview: { text: string; from_me: boolean }[];
   warnings: string[];
 }
 
@@ -232,10 +251,12 @@ export interface Methods {
   "export.choose_folder": [{ initial?: string }, { path: string | null; cloud_synced?: boolean }];
   "recording.choose": [Record<string, never>, { path: string | null; name?: string; bytes?: number }];
   "recording.device_videos": [{ udid: string }, DeviceVideo[]];
-  "recording.start": [{ path?: string; udid?: string; device_path?: string; recorded_at?: string }, { started: boolean }];
+  "recording.start": [{ path?: string; udid?: string; device_path?: string; recorded_at?: string; upload_id?: string }, { started: boolean }];
+  "recording.upload_ticket": [{ name: string; bytes: number }, { upload_id: string; url: string }];
+  "recording.review": [{ archive_id: string }, ReviewItem[]];
   "recording.info": [{ archive_id: string }, RecordingInfo];
   "recording.update": [
-    { archive_id: string; recorded_at?: string; names?: Record<string, string>; title?: string },
+    { archive_id: string; recorded_at?: string; names?: Record<string, string>; title?: string; edits?: Record<string, string | null> },
     { summary: Summary },
   ];
   "export.check_folder": [{ path: string }, { path: string; cloud_synced: boolean; exists: boolean }];

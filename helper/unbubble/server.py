@@ -4,6 +4,8 @@
 * `GET  /ws`          — the direct transport for Chrome, Edge, Firefox, Brave and Arc.
 * `GET  /`            — the standalone app: the same UI as thegreymirror.com/export, bundled in
                         the helper and served from this address (works offline, any browser).
+* `PUT  /recording/upload?t=…` — a screen recording dropped onto the page, streamed here. Needs a
+                        one-time ticket from the `recording.upload_ticket` RPC (see uploads.py).
 * `POST /control/url` — a second launch of the helper (e.g. Windows opening an unbubble:// link)
                         hands its URL to the running instance here. Browsers can't reach it: any
                         request carrying an Origin header is refused.
@@ -20,7 +22,7 @@ from typing import Optional
 
 from aiohttp import WSMsgType, web
 
-from . import PROTOCOL_VERSION, __version__
+from . import PROTOCOL_VERSION, __version__, uploads
 from .relay_client import handle_pair_url
 from .rpc import Rpc
 
@@ -89,6 +91,49 @@ async def ws_handler(request: web.Request) -> web.StreamResponse:
     return ws
 
 
+async def recording_upload(request: web.Request) -> web.StreamResponse:
+    """Stream a dropped screen recording to disk. Only allowed origins, only on loopback, only with
+    a fresh one-time ticket, only video files."""
+    origin = request.headers.get("Origin")
+    if request.method == "OPTIONS":
+        resp = web.Response(status=204)
+        if origin in allowed_origins():
+            resp.headers.update({
+                "Access-Control-Allow-Origin": origin, "Vary": "Origin",
+                "Access-Control-Allow-Methods": "PUT", "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Private-Network": "true", "Access-Control-Max-Age": "600",
+            })
+        return resp
+    if origin not in allowed_origins() or request.host.split(":")[0] not in ("127.0.0.1", "localhost"):
+        return web.Response(status=403, text="Origin not allowed")
+    up = uploads.claim(request.query.get("t", ""))
+    if up is None:
+        return _cors(request, web.Response(status=403, text="Upload ticket missing or used"))
+    written = 0
+    ok = False
+    try:
+        with open(up.path, "wb") as out:
+            first = True
+            async for chunk in request.content.iter_chunked(1024 * 1024):
+                if first:
+                    if not uploads.looks_like_video(chunk[:16]):
+                        return _cors(request, web.Response(status=415, text="That file isn't a video"))
+                    first = False
+                written += len(chunk)
+                if written > up.size + 1024 or written > uploads.MAX_BYTES:
+                    return _cors(request, web.Response(status=413, text="Larger than announced"))
+                out.write(chunk)
+        ok = written > 0
+    finally:
+        if not ok:
+            uploads.forget(up.token)
+    up.done = True
+    resp = web.json_response({"upload_id": up.token, "bytes": written})
+    resp.headers["Access-Control-Allow-Origin"] = origin
+    resp.headers["Vary"] = "Origin"
+    return resp
+
+
 async def control_url(request: web.Request) -> web.StreamResponse:
     if "Origin" in request.headers or request.headers.get("X-GM-Local") != "1":
         return web.Response(status=403)
@@ -128,6 +173,8 @@ def build_app() -> web.Application:
     app.router.add_route("OPTIONS", "/status", status)
     app.router.add_get("/ws", ws_handler)
     app.router.add_post("/control/url", control_url)
+    app.router.add_route("PUT", "/recording/upload", recording_upload)
+    app.router.add_route("OPTIONS", "/recording/upload", recording_upload)
     app.router.add_get("/", ui)
     app.router.add_get("/{path:.*}", ui)
     return app
