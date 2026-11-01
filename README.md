@@ -6,6 +6,8 @@
 
 **Free, open-source iPhone message exporter for Windows.** Plug in an iPhone and export every iMessage and text conversation, with photos, reactions, replies and edits, without making a full backup.
 
+**On an iPhone with no computer?** The iPhone app is in [ios/](ios/).
+
 It powers the upload flow on [thegreymirror.com](https://thegreymirror.com), and it works on its own as a standalone Windows app.
 
 ## Where it fits on thegreymirror.com
