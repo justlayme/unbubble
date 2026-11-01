@@ -108,12 +108,6 @@ final class ExportEngine {
         if arguments.contains("-ub-files") {
             startFilesForTest()
         }
-        if arguments.contains("-ub-refetch") {
-            Task {
-                try? await Task.sleep(for: .seconds(1.5))
-                await fetchFiles()
-            }
-        }
         if arguments.contains("-ub-write-files") { writeTestFiles() }
         #endif
     }
@@ -304,9 +298,6 @@ final class ExportEngine {
             return Self.json(path.hasSuffix("/finalize") ? Self.done : ["next": "finalize", "hop": 0])
         }
         lastDelivery = Date()
-        #if DEBUG
-        note("\(path) body=\(request.body.count) file=\(request.file.map { (try? FileManager.default.attributesOfItem(atPath: $0.path)[.size] as? Int) ?? -1 } ?? -2) headers=\(request.headers.keys.sorted().joined(separator: ","))")
-        #endif
         if path.hasSuffix("/file") { return saveFile(request) }
         let body = (try? JSONSerialization.jsonObject(with: request.body)) as? [String: Any] ?? [:]
         switch path {
@@ -565,15 +556,6 @@ final class ExportEngine {
     }
 
     #if DEBUG
-    private func note(_ line: String) {
-        let url = Self.folder.appending(path: "debug.log")
-        if !FileManager.default.fileExists(atPath: url.path) { FileManager.default.createFile(atPath: url.path, contents: nil) }
-        guard let handle = try? FileHandle(forWritingTo: url) else { return }
-        _ = try? handle.seekToEnd()
-        try? handle.write(contentsOf: Data((line + "\n").utf8))
-        try? handle.close()
-    }
-
     private func startFilesForTest() {
         guard let messages = try? readMessages() else { return }
         progress.files = FilePass.plan(times: messages.reversed().map(\.time))
