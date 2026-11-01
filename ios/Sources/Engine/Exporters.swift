@@ -254,7 +254,8 @@ enum Exporter {
 
     private static func cover(_ record: ExportRecord, pages: Int, fingerprint: String) {
         let width = page.width - margin * 2
-        var y = margin + 40
+        mark(at: CGPoint(x: margin, y: margin), pitch: 3.2)
+        var y = margin + 84
         func line(_ text: String, _ font: UIFont, gap: CGFloat, color: UIColor = .black) {
             let box = (text as NSString).boundingRect(with: CGSize(width: width, height: 400), options: [.usesLineFragmentOrigin], attributes: [.font: font], context: nil)
             (text as NSString).draw(with: CGRect(x: margin, y: y, width: width, height: ceil(box.height)), options: [.usesLineFragmentOrigin],
@@ -292,6 +293,24 @@ enum Exporter {
         if record.capped > 0 { notes += " In \(record.capped.formatted()) very busy stretches iOS may have returned fewer messages than were sent." }
         notes += " Unbubble does not certify this record. Ask your attorney or the court what is required to submit it."
         line(notes, .systemFont(ofSize: 9.5), gap: 0, color: .darkGray)
+    }
+
+    /// The logo in ink for a white page, its one cyan square kept.
+    private static func mark(at origin: CGPoint, pitch: CGFloat) {
+        UIColor(white: 0, alpha: 0.5).setFill()
+        UIRectFill(CGRect(x: origin.x + Logo.seam * pitch, y: origin.y, width: max(0.5, pitch * 0.11), height: Logo.height * pitch))
+        let square = pitch * Logo.square
+        for (row, line) in Logo.cells.enumerated() {
+            for (column, cell) in line.enumerated() where cell != "." {
+                switch cell {
+                case "c": UIColor(red: 34 / 255, green: 211 / 255, blue: 238 / 255, alpha: 1).setFill()
+                case "g": UIColor(white: 0.62, alpha: 1).setFill()
+                case "s": UIColor(white: 0.35, alpha: 1).setFill()
+                default: UIColor.black.setFill()
+                }
+                UIRectFill(CGRect(x: origin.x + CGFloat(column) * pitch, y: origin.y + (CGFloat(row) + Logo.top) * pitch, width: square, height: square))
+            }
+        }
     }
 
     private static func footer(number: Int, of total: Int, chat: String) {
