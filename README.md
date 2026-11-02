@@ -14,6 +14,12 @@ It powers the upload flow on [thegreymirror.com](https://thegreymirror.com), and
 
 Grey Mirror's upload wizard asks where someone's messages live. People with only an iPhone and a Windows PC are sent here: they install Unbubble, plug in the iPhone, and pick the conversation to upload, all without leaving the site. Mac users get the Grey Mirror Mac app instead, which reads Messages on the Mac directly. The wizard itself lives in the site; this repository is the exporter it drives.
 
+## Export first, analyze when you want
+
+Unbubble is a free, open-source exporter and works on its own. Unbubble and Grey Mirror are related JustLayMe projects. The [Unbubble platform guide](https://thegreymirror.com/grey-mirror/unbubble) explains the Windows and iPhone workflows and links to the source and current downloads. The [iPhone app source and build instructions](ios/) cover exporting on iOS 26 or later without a Mac or PC.
+
+If you want to examine communication patterns after exporting, [Grey Mirror’s full message-history analysis](https://thegreymirror.com/grey-mirror/relationship-text-analysis) compares reply timing, effort, conflict and repair with dated supporting messages. You can start free, with no card required, and inspect the imported date range and message count. Exporting with Unbubble is useful independently of choosing an analysis service.
+
 ## What Unbubble does (Windows)
 
 1. **Sets up Apple's iPhone driver in one click.** Windows can only reach an iPhone through Apple Mobile Device Service. The app installs Apple's official standalone package (`Apple.AppleMobileDeviceSupport`, via winget) after a single Windows permission prompt. There's no iTunes and no detour to another site.
