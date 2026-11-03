@@ -26,6 +26,12 @@ struct RootView: View {
     }
 }
 
+/// Apple added the Messages actions in iOS 26, but on iOS 26 Shortcuts stops with
+/// "There was a problem running" as soon as a conversation is picked (an iPhone 11
+/// on iOS 26.6.3, 2026-11-02). The export works on iOS 27.
+let minimumExportIOS = 27
+var canExportOnThisIOS: Bool { ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= minimumExportIOS }
+
 private struct HomeView: View {
     @Environment(ExportEngine.self) private var engine
 
@@ -36,6 +42,23 @@ private struct HomeView: View {
             .fixedSize(horizontal: false, vertical: true)
         Text("Export a whole conversation as a printable PDF or a spreadsheet, with every date and time. No computer, and it all stays on your iPhone.")
             .foregroundStyle(Theme.soft).fixedSize(horizontal: false, vertical: true)
+        if canExportOnThisIOS { steps } else { needsUpdate }
+    }
+
+    // Starting would only end in Shortcuts' error, so say what to do instead.
+    private var needsUpdate: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Seam()
+            Text("NEEDS iOS \(minimumExportIOS) OR LATER").font(Theme.label).foregroundStyle(.orange)
+            Text("This iPhone is on iOS \(ProcessInfo.processInfo.operatingSystemVersion.majorVersion), where Apple's Messages actions in Shortcuts stop with an error as soon as you pick a conversation.")
+                .font(.subheadline).fixedSize(horizontal: false, vertical: true)
+            Text("Update for free in Settings → General → Software Update, then open Unbubble again. If this iPhone can't update to iOS \(minimumExportIOS), plug it into a Windows PC and use the free Unbubble app for Windows instead.")
+                .font(.footnote).foregroundStyle(Theme.soft).fixedSize(horizontal: false, vertical: true)
+            Seam()
+        }
+    }
+
+    @ViewBuilder private var steps: some View {
         VStack(spacing: 0) {
             Seam()
             step("01", "Add the Shortcut", "Apple only lets Shortcuts read Messages. The first time, tap Add Shortcut and come back.", done: engine.shortcutAdded)
