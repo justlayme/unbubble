@@ -15,6 +15,8 @@ Find Messages can't filter by conversation and stops at about 500 results, so th
 
 Nothing leaves the phone. See [PRIVACY.md](PRIVACY.md).
 
+**Needs iOS 27 or later.** Apple added the Messages actions in iOS 26, but there Shortcuts stops with "There was a problem running" as soon as you pick a conversation, so on iOS 26 the app says to update instead of starting.
+
 ## Output
 
 - **PDF:** a printable record with a cover page, dates, times, senders, numbered messages and pages, photos, and a SHA-256 fingerprint of its contents. Unbubble doesn't certify a record. Ask your attorney or the court what they require.
@@ -23,7 +25,7 @@ Nothing leaves the phone. See [PRIVACY.md](PRIVACY.md).
 
 ## Building
 
-Needs Xcode and [XcodeGen](https://github.com/yonaskolb/XcodeGen). iOS 26 or later.
+Needs Xcode and [XcodeGen](https://github.com/yonaskolb/XcodeGen). The app installs on iOS 26 or later; exporting needs iOS 27.
 
 ```bash
 xcodegen generate
