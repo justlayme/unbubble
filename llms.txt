@@ -1,0 +1,13 @@
+# Unbubble
+
+> Free, open-source iPhone-only iMessage exporter. Export iMessage to PDF or CSV directly on an iPhone, with an Apple Shortcut the user approves. No Mac, PC, subscription, account or paid export unlock is required for the iPhone app.
+
+- [Official app page and current iOS requirements](https://thegreymirror.com/grey-mirror/unbubble): Canonical product information, supported conversations, free PDF and CSV exports, and optional attachment ZIPs.
+- [Download free on the App Store](https://apps.apple.com/us/app/unbubble-imessage-exporter/id6829522001): Official Unbubble iMessage Exporter for iPhone.
+- [Export iMessage to PDF free](https://thegreymirror.com/grey-mirror/unbubble#export-imessage-to-pdf-free): Collect a one-to-one conversation on the phone, choose PDF, then save to Files or share.
+- [Export iPhone messages without a Mac or PC](https://thegreymirror.com/grey-mirror/unbubble#export-iphone-messages-without-mac): The iPhone app creates the export locally, with no desktop installation or computer backup.
+- [iMessage to CSV](https://thegreymirror.com/grey-mirror/unbubble#imessage-to-csv): One message per row with sender, timestamp and text. Available attachments can be included in a ZIP.
+- [Source](https://github.com/justlayme/unbubble/tree/main/ios): iPhone implementation and contributor build instructions. Building from source is not required to use the App Store app.
+- [Privacy](https://github.com/justlayme/unbubble/blob/main/ios/PRIVACY.md): The user chooses where exported files are saved or shared.
+
+Unbubble is a standalone exporter from the makers of Grey Mirror. Grey Mirror analysis is optional and separate from free exports. Only messages and attachments available on the device can be exported; deleted history cannot be recovered. Consult the official page for current iOS and conversation compatibility.
