@@ -22,6 +22,12 @@ final class ExportEngine {
         /// iOS never hands back more than about this many from one Find.
         static let ceiling = 500
         static let minMs = 20.0 * 60 * 1000
+        /// A read whose columns do not line up (a column with more or fewer items than
+        /// messages) is read again in thirds, below minMs if need be, down to a second:
+        /// one message alone always lines up. Passing it over at minMs lost every window
+        /// of more than one message on an iPhone on iOS 26.3 (Grey Mirror, 2026-11-05).
+        static let splitMinMs = 1000.0
+        static let splitRegrow = 8.0
         static let maxMs = 60.0 * 864e5
         static let quietStopMs = 365.0 * 864e5
         static let floorMs = 1_167_609_600_000.0 // 2007
@@ -373,7 +379,13 @@ final class ExportEngine {
         let times = list("t"), senders = list("s"), bodies = list("b"), kinds = list("ty"), chats = list("c")
         let aligned = n == 0 || (times.count == n && senders.count == n && bodies.count == n && kinds.count == n && chats.count == n)
         let room = progress.spanMs > Window.minMs
-        if (n >= Window.full || !aligned) && room {
+        if !aligned && n < Window.full && progress.spanMs > Window.splitMinMs {
+            if progress.splitFromMs == nil { progress.splitFromMs = progress.spanMs }
+            progress.spanMs = max(Window.splitMinMs, (progress.spanMs / 3000).rounded() * 1000)
+            save()
+            return Self.json(next())
+        }
+        if n >= Window.full && room {
             progress.density = max(progress.density, Double(Window.full) / progress.spanMs)
             progress.spanMs = max(Window.minMs, (progress.spanMs / 3).rounded())
             save()
@@ -395,7 +407,13 @@ final class ExportEngine {
         let density = Double(max(n, 30)) / progress.spanMs
         progress.density = progress.density > 0 ? (progress.density + density) / 2 : density
         let scaled = Window.aim / progress.density
+        let readSpanMs = progress.spanMs
         progress.spanMs = min(Window.maxMs, max(Window.minMs, min(progress.spanMs * 1.5, max(progress.spanMs / 2, scaled)))).rounded()
+        if let from = progress.splitFromMs, aligned {
+            // The split window is through: back toward its old span, quickly.
+            progress.spanMs = max(Window.splitMinMs, min(from, readSpanMs * Window.splitRegrow, progress.spanMs)).rounded()
+            progress.splitFromMs = nil
+        }
         report()
         save()
         return Self.json(next())

@@ -100,6 +100,8 @@ struct ExportProgress: Codable, Sendable {
     /// iOS may have stopped short. Both are said out loud on the record.
     var unread = 0
     var capped = 0
+    /// The span a window had before it was split for columns that did not line up.
+    var splitFromMs: Double?
     var files: FilePass?
     var finished = false
 }

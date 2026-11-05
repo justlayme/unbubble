@@ -63,7 +63,7 @@ private struct HomeView: View {
             Seam()
             step("01", "Add the Shortcut", "Apple only lets Shortcuts read Messages. The first time, tap Add Shortcut and come back.", done: engine.shortcutAdded)
             Seam()
-            step("02", "Pick a conversation", "Tap Always Allow whenever iPhone asks.", done: false)
+            step("02", "Pick a conversation", "One with a single other person: Unbubble doesn't export group chats. Tap Always Allow whenever iPhone asks.", done: false)
             Seam()
             step("03", "Keep this screen open", "Unlocked and plugged in. Long histories can take a while.", done: false)
             Seam()
