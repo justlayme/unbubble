@@ -33,7 +33,7 @@ final class ExportEngine {
 
     static let quietLimit: TimeInterval = 90
     static let shortcutName = "Unbubble Export"
-    static let greyMirrorLink = URL(string: "https://thegreymirror.com/grey-mirror?source=unbubble")!
+    static let greyMirrorLink = URL(string: "https://apps.apple.com/app/id6799236359")!
     static let shortcutLink = URL(string: "https://www.icloud.com/shortcuts/0e0ba46174fc41ab8ba55d1cb21ead01")!
 
     private(set) var phase: Phase = .idle
