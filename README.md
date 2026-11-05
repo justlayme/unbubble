@@ -1,4 +1,4 @@
-# Unbubble — Free iPhone-Only iMessage Exporter
+# Unbubble — Export iMessage Free Without a Mac or PC
 
 **Export iMessage to PDF free or save iMessage to CSV, straight from your iPhone. No Mac or PC required.** Unbubble is a free, open-source iPhone app: no subscription, no account, and no paid export unlock.
 
