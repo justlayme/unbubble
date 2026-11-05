@@ -1,6 +1,8 @@
 # Unbubble for iPhone
 
-Export a conversation from Messages on an iPhone, with no computer, as a PDF or a CSV, with its photos and files if you want them. Free and open source.
+**Export iMessage to PDF free or save iMessage to CSV directly on your iPhone. No Mac or PC required.** Free and open source, with no subscription, account or paid export unlock. Include available photos and files when you choose.
+
+[Download Unbubble free on the App Store](https://apps.apple.com/us/app/unbubble-imessage-exporter/id6829522001) · [Official iPhone export guides and current compatibility](https://thegreymirror.com/grey-mirror/unbubble)
 
 ## How it works
 
