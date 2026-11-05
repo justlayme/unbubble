@@ -14,7 +14,10 @@ final class ExportEngine {
     enum Phase: Equatable { case idle, opening, reading, paused, finished }
 
     private enum Window {
-        static let aim = 300.0
+        /// A Find's time grows faster than its size: about 15 ms a message at
+        /// 100-150, 20 ms at 250 and 30 ms at 400 (511 reads on three iPhones,
+        /// 2026-11-03/04). 180 reads about a sixth faster than 300 did.
+        static let aim = 180.0
         static let full = 450
         /// iOS never hands back more than about this many from one Find.
         static let ceiling = 500
@@ -32,16 +35,19 @@ final class ExportEngine {
     }
 
     static let quietLimit: TimeInterval = 90
-    static let shortcutName = "Unbubble Export"
+    /// Unbubble Export 2 works on iOS 26 too (Shortcut/build-export-2.py). Each
+    /// version has its own name: a second copy under one name stops Shortcuts
+    /// running either.
+    static let shortcutName = "Unbubble Export 2"
     static let greyMirrorLink = URL(string: "https://apps.apple.com/app/id6799236359")!
-    static let shortcutLink = URL(string: "https://www.icloud.com/shortcuts/0e0ba46174fc41ab8ba55d1cb21ead01")!
+    static let shortcutLink = URL(string: "https://www.icloud.com/shortcuts/780a4fd168904283ab8ccf0f2bcdf3e4")!
 
     private(set) var phase: Phase = .idle
     private(set) var progress = ExportProgress()
     private(set) var lastDelivery = Date.distantPast
     var errorLine: String?
     var shortcutAdded: Bool {
-        didSet { UserDefaults.standard.set(shortcutAdded, forKey: "shortcutAdded") }
+        didSet { UserDefaults.standard.set(shortcutAdded, forKey: Self.addedKey) }
     }
 
     private let receiver = LocalReceiver()
@@ -88,7 +94,7 @@ final class ExportEngine {
     }
 
     init() {
-        shortcutAdded = UserDefaults.standard.bool(forKey: "shortcutAdded")
+        shortcutAdded = UserDefaults.standard.bool(forKey: Self.addedKey)
         if let data = try? Data(contentsOf: Self.progressURL),
            let saved = try? JSONDecoder().decode(ExportProgress.self, from: data) {
             progress = saved
@@ -312,6 +318,14 @@ final class ExportEngine {
     }
 
     private static let done: [String: Any] = ["next": "", "returnUrl": "unbubble://done"]
+    /// Added is per Shortcut name: adding Unbubble Export (1) does not count.
+    private static var addedKey: String { "shortcutAdded.\(shortcutName)" }
+
+    /// On iOS 26 the Shortcut cannot read a chat's recipients, so a group chat
+    /// shows itself in its senders instead: a one-to-one chat has at most two
+    /// named people, the reader and the contact.
+    static let groupMessage = "That one is a group chat. Unbubble exports conversations with one other person, so start again and pick one of those."
+    private var looksLikeGroup: Bool { progress.recipients.isEmpty && Sides.namedPeople(in: progress.labels.keys) >= 3 }
 
     private func begin(_ body: [String: Any]) -> Data {
         let name = (body["conversationName"] as? String) ?? ""
@@ -367,6 +381,13 @@ final class ExportEngine {
         }
         progress.read += n
         if aligned && n > 0 { keep(times, senders, bodies, kinds, chats) }
+        if looksLikeGroup {
+            // Nothing of a group chat is kept; the run is told to finish, and the
+            // finish reply ends it (the token no longer matches).
+            clear()
+            errorLine = Self.groupMessage
+            return Self.json(["next": "finalize", "hop": 0])
+        }
         if !aligned { progress.unread += n }
         if n >= Window.ceiling { progress.capped += 1 }
         progress.endMs -= progress.spanMs

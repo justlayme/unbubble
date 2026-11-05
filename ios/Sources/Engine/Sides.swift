@@ -48,6 +48,12 @@ struct Sides: Sendable {
     }
 
     private static let selfLabels: Set<String> = ["me", "myself", "you"]
+
+    /// Senders that are a named person: not blank, not "Me", and not a phone
+    /// number or email (which can be the same contact on another handle).
+    static func namedPeople(in labels: some Sequence<String>) -> Int {
+        Set(labels.map(normalized)).filter { !$0.isEmpty && !selfLabels.contains($0) && !isHandle($0) }.count
+    }
     private static let bidiMarks = CharacterSet(charactersIn: "\u{200E}\u{200F}\u{202A}\u{202B}\u{202C}\u{202D}\u{202E}\u{2066}\u{2067}\u{2068}\u{2069}")
 
     static func normalized(_ value: String) -> String {

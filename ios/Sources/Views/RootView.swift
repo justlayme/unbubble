@@ -26,10 +26,10 @@ struct RootView: View {
     }
 }
 
-/// Apple added the Messages actions in iOS 26, but on iOS 26 Shortcuts stops with
-/// "There was a problem running" as soon as a conversation is picked (an iPhone 11
-/// on iOS 26.6.3, 2026-11-02). The export works on iOS 27.
-let minimumExportIOS = 27
+/// Find Messages and Find Conversations arrived in iOS 26. Unbubble Export (1)
+/// stopped there once a conversation was picked (it read the recipients, which
+/// fails on iOS 26); Unbubble Export 2 does not, so iOS 26 can export again.
+let minimumExportIOS = 26
 var canExportOnThisIOS: Bool { ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= minimumExportIOS }
 
 private struct HomeView: View {
