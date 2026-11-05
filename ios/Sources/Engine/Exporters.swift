@@ -7,9 +7,19 @@ import CryptoKit
 enum Exporter {
     static let noText = "[No text: photo, file or other attachment]"
 
+    /// A fixed machine format. Without the POSIX locale a Buddhist or Japanese
+    /// calendar prints another year, and iOS's 12/24-hour setting can change it.
+    private static func fixed(_ format: String) -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.dateFormat = format
+        return formatter
+    }
+
     private static func base(_ record: ExportRecord) -> String {
         let safe = record.chat.components(separatedBy: CharacterSet(charactersIn: "/\\:?%*|\"<>")).joined(separator: " ")
-        let day = DateFormatter(); day.dateFormat = "yyyy-MM-dd"
+        let day = fixed("yyyy-MM-dd")
         let from = record.messages.first.map { day.string(from: Date(timeIntervalSince1970: $0.time)) } ?? ""
         let to = record.messages.last.map { day.string(from: Date(timeIntervalSince1970: $0.time)) } ?? ""
         return "Unbubble - \(safe) - \(from) to \(to)"
@@ -43,8 +53,8 @@ enum Exporter {
         defer { try? handle.close() }
         _ = try handle.seekToEnd()
         try handle.write(contentsOf: Data("Timestamp,Date,Time,Sender,Direction,Type,Message,Attachments\r\n".utf8))
-        let date = DateFormatter(); date.dateFormat = "yyyy-MM-dd"
-        let time = DateFormatter(); time.dateFormat = "HH:mm:ss"
+        let date = fixed("yyyy-MM-dd")
+        let time = fixed("HH:mm:ss")
         var chunk = ""
         for (index, message) in record.messages.enumerated() {
             let when = Date(timeIntervalSince1970: message.time)
@@ -144,7 +154,40 @@ enum Exporter {
         let url = destination(base(record), "pdf")
         let width = page.width - margin * 2
         let dayFormat = DateFormatter(); dayFormat.dateStyle = .full
-        let timeFormat = DateFormatter(); timeFormat.dateFormat = "h:mm:ss a"
+        let timeFormat = DateFormatter(); timeFormat.setLocalizedDateFormatFromTemplate("jmmss")
+
+        func textHeight(_ text: String) -> CGFloat {
+            guard !text.isEmpty else { return 0 }
+            let box = (text as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),
+                                                      options: [.usesLineFragmentOrigin], attributes: [.font: bodyFont], context: nil)
+            return ceil(box.height)
+        }
+
+        // A message taller than a page would be cut off at its foot, so it is
+        // split into page-sized pieces, each after the first marked continued.
+        let pieceHeight = page.height - margin * 2 - 16 - 13 - 7 - 40
+        func pieces(_ text: String) -> [String] {
+            var rest = Substring(text)
+            var out: [String] = []
+            while textHeight(String(rest)) > pieceHeight {
+                // The most characters that fit, found by halving; text with no
+                // spaces (Chinese, Japanese, a long link) splits there too.
+                var low = 1, high = rest.count
+                while low < high {
+                    let middle = (low + high + 1) / 2
+                    if textHeight(String(rest.prefix(middle))) <= pieceHeight { low = middle } else { high = middle - 1 }
+                }
+                var cut = rest.index(rest.startIndex, offsetBy: low)
+                if let space = rest[..<cut].lastIndex(where: \.isWhitespace),
+                   rest.distance(from: rest.startIndex, to: space) > low / 2 {
+                    cut = rest.index(after: space)
+                }
+                out.append(String(rest[..<cut]))
+                rest = rest[cut...]
+            }
+            out.append(String(rest))
+            return out
+        }
 
         var rows: [Row] = []
         rows.reserveCapacity(record.messages.count + record.messages.count / 20)
@@ -160,17 +203,15 @@ enum Exporter {
                 return pictureSize(file).map { Picture(url: file, size: $0) }
             }
             let text = shown(message)
-            rows.append(.message(meta: "No. \((index + 1).formatted()) · \(timeFormat.string(from: when)) · \(record.sender(of: message))\(kind)",
-                                 text: text.isEmpty && saved.isEmpty ? noText : text,
-                                 pictures: pictures,
-                                 files: saved.map { "Attachment: \($0.file)" }.joined(separator: "\n")))
-        }
-
-        func textHeight(_ text: String) -> CGFloat {
-            guard !text.isEmpty else { return 0 }
-            let box = (text as NSString).boundingRect(with: CGSize(width: width, height: .greatestFiniteMagnitude),
-                                                      options: [.usesLineFragmentOrigin], attributes: [.font: bodyFont], context: nil)
-            return ceil(box.height)
+            let meta = "No. \((index + 1).formatted()) · \(timeFormat.string(from: when)) · \(record.sender(of: message))\(kind)"
+            let parts = pieces(text.isEmpty && saved.isEmpty ? noText : text)
+            for (part, piece) in parts.enumerated() {
+                let last = part == parts.count - 1
+                rows.append(.message(meta: part == 0 ? meta : "No. \((index + 1).formatted()) (continued)",
+                                     text: piece,
+                                     pictures: last ? pictures : [],
+                                     files: last ? saved.map { "Attachment: \($0.file)" }.joined(separator: "\n") : ""))
+            }
         }
 
         func height(_ row: Row) -> CGFloat {

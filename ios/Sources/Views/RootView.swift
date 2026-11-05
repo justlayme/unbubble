@@ -185,8 +185,7 @@ private struct FinishedView: View {
                 SmallLabel(text: engine.progress.chat, color: Theme.signal)
                 PixelText(text: engine.messageCount.formatted())
                 if let oldest = engine.progress.oldest, let newest = engine.progress.newest {
-                    Text("messages, \(Date(timeIntervalSince1970: oldest).formatted(date: .abbreviated, time: .omitted)) to \(Date(timeIntervalSince1970: newest).formatted(date: .abbreviated, time: .omitted))")
-                        .font(.subheadline).foregroundStyle(Theme.soft)
+                    Text(span(from: oldest, to: newest)).font(.subheadline).foregroundStyle(Theme.soft)
                 }
             }
             HistoryGrid(days: engine.progress.days)
@@ -242,6 +241,13 @@ private struct FinishedView: View {
                 .foregroundStyle(Theme.soft).fixedSize(horizontal: false, vertical: true)
             PrimaryButton(title: "Start again") { engine.clear() }
         }
+    }
+
+    private func span(from oldest: TimeInterval, to newest: TimeInterval) -> String {
+        let first = Date(timeIntervalSince1970: oldest), last = Date(timeIntervalSince1970: newest)
+        let unit = engine.messageCount == 1 ? "message" : "messages"
+        let day = { (date: Date) in date.formatted(date: .abbreviated, time: .omitted) }
+        return Calendar.current.isDate(first, inSameDayAs: last) ? "\(unit), \(day(first))" : "\(unit), \(day(first)) to \(day(last))"
     }
 
     private var pass: FilePass? { engine.progress.files }
