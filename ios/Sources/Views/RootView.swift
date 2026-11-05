@@ -28,7 +28,7 @@ struct RootView: View {
 
 /// Find Messages and Find Conversations arrived in iOS 26. Unbubble Export (1)
 /// stopped there once a conversation was picked (it read the recipients, which
-/// fails on iOS 26); Unbubble Export 2 does not, so iOS 26 can export again.
+/// fails on iOS 26); Unbubble Export 2 and 3 do not, so iOS 26 can export again.
 let minimumExportIOS = 26
 var canExportOnThisIOS: Bool { ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= minimumExportIOS }
 

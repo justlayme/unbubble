@@ -4,7 +4,7 @@ Last updated: November 1, 2026
 
 Unbubble exports a conversation from Messages on your iPhone into a file you control.
 
-**What Unbubble reads.** You run the Unbubble Export 2 Shortcut, which you add to Apple's Shortcuts app. Apple shows you each permission. The Shortcut reads messages on your iPhone and passes them to the Unbubble app over the iPhone's own internal loopback address. To find the conversation you picked, it reads through your messages in date order, and Unbubble keeps only that conversation. Everything else is dropped as it arrives and is never written anywhere.
+**What Unbubble reads.** You run the Unbubble Export 3 Shortcut, which you add to Apple's Shortcuts app. Apple shows you each permission. The Shortcut reads messages on your iPhone and passes them to the Unbubble app over the iPhone's own internal loopback address. To find the conversation you picked, it reads through your messages in date order, and Unbubble keeps only that conversation. Everything else is dropped as it arrives and is never written anywhere.
 
 **Where your messages go.** Nowhere. Unbubble has no server and no account. It does not collect, send or sell anything, and it contains no analytics, advertising or tracking code. The export stays in the app's private storage on your iPhone and is left out of iCloud and computer backups.
 

@@ -41,12 +41,13 @@ final class ExportEngine {
     }
 
     static let quietLimit: TimeInterval = 90
-    /// Unbubble Export 2 works on iOS 26 too (Shortcut/build-export-2.py). Each
-    /// version has its own name: a second copy under one name stops Shortcuts
-    /// running either.
-    static let shortcutName = "Unbubble Export 2"
+    /// Unbubble Export 3 (Shortcut/build-export-3.py) lists the 50 most recent
+    /// chats; the 500 Export 2 asked for failed on long histories on iOS 27.
+    /// Each version has its own name: a second copy under one name stops
+    /// Shortcuts running either.
+    static let shortcutName = "Unbubble Export 3"
     static let greyMirrorLink = URL(string: "https://apps.apple.com/app/id6799236359")!
-    static let shortcutLink = URL(string: "https://www.icloud.com/shortcuts/780a4fd168904283ab8ccf0f2bcdf3e4")!
+    static let shortcutLink = URL(string: "https://www.icloud.com/shortcuts/bf241069f92f4928991cbb8d7e045060")!
 
     private(set) var phase: Phase = .idle
     private(set) var progress = ExportProgress()

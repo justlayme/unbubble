@@ -9,13 +9,13 @@
 Apple doesn't let apps read Messages, but it does let a Shortcut you approve. So Unbubble has two parts:
 
 - **The app** (`Sources/`) listens on the iPhone's loopback address, `127.0.0.1:47821`, for the current export only, using a random token it hands the Shortcut.
-- **The Shortcut** (`Shortcut/Unbubble Export 2.plist`, built from `Shortcut/Unbubble Export.plist` by `Shortcut/build-export-2.py`, or [add it from iCloud](https://www.icloud.com/shortcuts/780a4fd168904283ab8ccf0f2bcdf3e4)) is a plain loop. It asks the app which stretch of time to read, runs Find Messages over it and hands back what it found.
+- **The Shortcut** (`Shortcut/published/unbubble-export-3.plist`, built from the published Unbubble Export 2 by `Shortcut/build-export-3.py`, or [add it from iCloud](https://www.icloud.com/shortcuts/bf241069f92f4928991cbb8d7e045060)) is a plain loop. It asks the app which stretch of time to read, runs Find Messages over it and hands back what it found.
 
 Find Messages can't filter by conversation and stops at about 500 results, so the app steers: it sizes each stretch from how busy the last one was, narrows and rereads one that comes back near the limit, and keeps only the chosen conversation. Everything else is dropped on arrival. A Shortcut run's memory only grows, so the app also tells it when to restart itself and carry on from the same place.
 
 Nothing leaves the phone. See [PRIVACY.md](PRIVACY.md).
 
-**Needs iOS 26 or later**, where Apple added the Messages actions. On iOS 26 Shortcuts stops with "There was a problem running" when it reads a conversation's recipients, so there Unbubble Export 2 skips them, and the app tells a group chat apart by its senders instead: three or more named people.
+**Needs iOS 26 or later**, where Apple added the Messages actions. On iOS 26 Shortcuts stops with "There was a problem running" when it reads a conversation's recipients, so there the Shortcut skips them, and the app tells a group chat apart by its senders instead: three or more named people.
 
 ## Output
 
