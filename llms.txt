@@ -1,4 +1,4 @@
-# Unbubble
+# Unbubble — Export iMessage Free Without a Mac or PC
 
 > Free, open-source iPhone-only iMessage exporter. Export iMessage to PDF or CSV directly on an iPhone, with an Apple Shortcut the user approves. No Mac, PC, subscription, account or paid export unlock is required for the iPhone app.
 
