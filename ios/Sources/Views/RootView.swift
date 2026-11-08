@@ -239,7 +239,7 @@ private struct FinishedView: View {
         let chat = engine.progress.chat.isEmpty ? "them" : engine.progress.chat
         let count = engine.messageCount.formatted()
         return VStack(alignment: .leading, spacing: 10) {
-            SmallLabel(text: "The Grey Mirror · from the makers of Unbubble", color: Theme.signal)
+            SmallLabel(text: "The Grey Mirror", color: Theme.signal)
             Text("You have \(count) messages with \(chat). What do they say about you two?")
                 .font(.title3.weight(.semibold)).foregroundStyle(Theme.ink)
                 .fixedSize(horizontal: false, vertical: true)
@@ -250,7 +250,7 @@ private struct FinishedView: View {
             Text("The Grey Mirror reads the whole conversation and shows you the patterns inside it: who reaches out first, who pulls back, whether the interest is mutual, and the day the tone changed.")
                 .font(.footnote).foregroundStyle(Theme.soft).fixedSize(horizontal: false, vertical: true)
             PrimaryButton(title: "Get The Grey Mirror") { openURL(ExportEngine.greyMirrorLink) }
-            Text("A separate app with a free preview. This export stays on your iPhone.")
+            Text("A separate app from the makers of Unbubble, with a free preview. This export stays on your iPhone.")
                 .font(.caption).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
