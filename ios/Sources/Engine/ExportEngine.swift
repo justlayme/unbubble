@@ -41,13 +41,14 @@ final class ExportEngine {
     }
 
     static let quietLimit: TimeInterval = 90
-    /// Unbubble Export 3 (Shortcut/build-export-3.py) lists the 50 most recent
-    /// chats; the 500 Export 2 asked for failed on long histories on iOS 27.
-    /// Each version has its own name: a second copy under one name stops
-    /// Shortcuts running either.
-    static let shortcutName = "Unbubble Export 3"
+    /// Unbubble Export 4 (Shortcut/build-export-fixed.py 4, 2026-11-08): its restart
+    /// never asks which chat. Export 2 and 3 garbled their restart link, so every
+    /// restarted run got no input and asked "Which conversation should Unbubble
+    /// export?". Each version has its own name: a second copy under one name stops
+    /// Shortcuts running either, and a new name is a fresh Add Shortcut for everyone.
+    static let shortcutName = "Unbubble Export 4"
     static let greyMirrorLink = URL(string: "https://apps.apple.com/app/id6799236359")!
-    static let shortcutLink = URL(string: "https://www.icloud.com/shortcuts/bf241069f92f4928991cbb8d7e045060")!
+    static let shortcutLink = URL(string: "https://www.icloud.com/shortcuts/f541b52427274f3895f7217b882f6b46")!
 
     private(set) var phase: Phase = .idle
     private(set) var progress = ExportProgress()
@@ -325,7 +326,7 @@ final class ExportEngine {
     }
 
     private static let done: [String: Any] = ["next": "", "returnUrl": "unbubble://done"]
-    /// Added is per Shortcut name: adding Unbubble Export (1) does not count.
+    /// Added is per Shortcut name: Export 4 is a fresh add for everyone.
     private static var addedKey: String { "shortcutAdded.\(shortcutName)" }
 
     /// On iOS 26 the Shortcut cannot read a chat's recipients, so a group chat

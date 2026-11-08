@@ -42,6 +42,7 @@ private struct HomeView: View {
             .fixedSize(horizontal: false, vertical: true)
         Text("Export a whole conversation as a printable PDF or a spreadsheet, with every date and time. No computer, and it all stays on your iPhone.")
             .foregroundStyle(Theme.soft).fixedSize(horizontal: false, vertical: true)
+        SmallLabel(text: "From the makers of The Grey Mirror", color: Theme.signal)
         if canExportOnThisIOS { steps } else { needsUpdate }
     }
 
@@ -61,7 +62,7 @@ private struct HomeView: View {
     @ViewBuilder private var steps: some View {
         VStack(spacing: 0) {
             Seam()
-            step("01", "Add the Shortcut", "Apple only lets Shortcuts read Messages. The first time, tap Add Shortcut and come back.", done: engine.shortcutAdded)
+            step("01", "Add the Shortcut", "Apple only lets Shortcuts read Messages. Tap Add Shortcut, then come back.", done: engine.shortcutAdded)
             Seam()
             step("02", "Pick a conversation", "One with a single other person: Unbubble doesn't export group chats. Tap Always Allow whenever iPhone asks.", done: false)
             Seam()
@@ -205,6 +206,7 @@ private struct FinishedView: View {
                     Seam()
                 }
             }
+            greyMirror
             if savedFiles > 0, pass?.stoppedEarly == true {
                 QuietButton(title: "Get the rest of the files") { Task { await engine.fetchFiles() } }
             }
@@ -219,20 +221,6 @@ private struct FinishedView: View {
             }
             if let failure { Text(failure).font(.footnote).foregroundStyle(.orange) }
 
-            Button { openURL(ExportEngine.greyMirrorLink) } label: {
-                VStack(alignment: .leading, spacing: 8) {
-                    SmallLabel(text: "From the same people")
-                    Text("What do these messages really say?").font(.headline).foregroundStyle(Theme.ink)
-                    Text("The Grey Mirror reads a whole relationship's messages and shows you the patterns: who reached out, who pulled back, and when it changed.")
-                        .font(.footnote).foregroundStyle(Theme.soft).multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                    SmallLabel(text: "See The Grey Mirror", color: Theme.signal)
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .overlay(Rectangle().stroke(Theme.line))
-            }
-
             Button("Delete this export and start over") { engine.clear() }.font(.footnote).foregroundStyle(Theme.dim)
                 .sheet(item: $file) { ShareSheet(url: $0.url) }
         } else {
@@ -241,6 +229,33 @@ private struct FinishedView: View {
                 .foregroundStyle(Theme.soft).fixedSize(horizontal: false, vertical: true)
             PrimaryButton(title: "Start again") { engine.clear() }
         }
+    }
+
+    /// The Grey Mirror, by the same people, for the question an export usually
+    /// starts with. Built from counts Unbubble already has on this iPhone; it
+    /// sends nothing anywhere, and says plainly that The Grey Mirror is a
+    /// separate app (which, unlike Unbubble, reads messages on its servers).
+    private var greyMirror: some View {
+        let chat = engine.progress.chat.isEmpty ? "them" : engine.progress.chat
+        let count = engine.messageCount.formatted()
+        return VStack(alignment: .leading, spacing: 10) {
+            SmallLabel(text: "The Grey Mirror · from the makers of Unbubble", color: Theme.signal)
+            Text("You have \(count) messages with \(chat). What do they say about you two?")
+                .font(.title3.weight(.semibold)).foregroundStyle(Theme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            if engine.mine > 0, engine.theirs > 0 {
+                Text("You sent \(engine.mine.formatted()). \(chat) sent \(engine.theirs.formatted()).")
+                    .font(.subheadline.monospacedDigit()).foregroundStyle(Theme.ink)
+            }
+            Text("The Grey Mirror reads the whole conversation and shows you the patterns inside it: who reaches out first, who pulls back, whether the interest is mutual, and the day the tone changed.")
+                .font(.footnote).foregroundStyle(Theme.soft).fixedSize(horizontal: false, vertical: true)
+            PrimaryButton(title: "Get The Grey Mirror") { openURL(ExportEngine.greyMirrorLink) }
+            Text("A separate app with a free preview. This export stays on your iPhone.")
+                .font(.caption).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(Rectangle().stroke(Theme.signal.opacity(0.6)))
     }
 
     private func span(from oldest: TimeInterval, to newest: TimeInterval) -> String {
