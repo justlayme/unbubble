@@ -3,8 +3,10 @@
 names the apps already run (1.1 runs "Unbubble Export 2", 1.2 runs "Unbubble Export 3"),
 so no app needs a new build for it.
 
-A restarted run no longer asks "Recent chats / Search by name" (owner, 2026-11-08: the
-export stopped at every restart). Both get Export 3's 50-chat Recent list too.
+A restarted run no longer asks "Which conversation should Unbubble export?" (owner,
+2026-11-08: the export stopped at every restart): the restart link puts its input where
+its placeholder is, and a run with a second input line never asks. Both get Export 3's
+50-chat Recent list too.
 
 Replace, don't add: two same-named Shortcuts make run-by-name run neither.
 
@@ -25,7 +27,15 @@ hits = 0
 for a in sc['WFWorkflowActions']:
     t = a['WFWorkflowActionParameters'].get('WFTextActionText', {}).get('Value', {})
     if isinstance(t, dict) and old in t.get('string', ''):
-        t['string'] = t['string'].replace(old, new)  # same length: attachment ranges hold
+        t['string'] = t['string'].replace(old, new)
+        # The token and chat go where the placeholder is. Export 2 lengthened the name
+        # ("Unbubble%20Export" -> "...%202", 4 characters) and left the range at 64, so
+        # since Export 2 every restart link was garbled: the restarted run got no input
+        # and asked "Which conversation should Unbubble export?" (owner, 2026-11-08).
+        # Ranges count UTF-16 units.
+        (attachment,) = t['attachmentsByRange'].values()
+        at = len(t['string'][:t['string'].index('\ufffc')].encode('utf-16-le')) // 2
+        t['attachmentsByRange'] = {f'{{{at}, 1}}': attachment}
         hits += 1
 assert hits == 1, hits
 flat = plistlib.dumps(sc).decode('utf-8', 'replace')
