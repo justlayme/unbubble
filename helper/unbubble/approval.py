@@ -3,6 +3,10 @@
 A malicious page could fire a `unbubble://pair` link pointing the helper at a room the attacker
 controls. So the first pairing from any browser key needs a native confirmation showing a short
 code that must match the one on thegreymirror.com. Approved browser keys are remembered.
+
+Direct connections (Chrome, Edge, Firefox, Brave) from the website get the same kind of gate:
+the first one after the helper starts needs an Allow on the computer (see `allow_direct`), so a
+page cannot read anyone's messages without the person at the computer saying yes.
 """
 
 from __future__ import annotations
@@ -13,6 +17,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from .util import data_dir
@@ -48,11 +53,14 @@ def remember(browser_pk: bytes) -> None:
 
 
 def _ask_blocking(code: str) -> bool:
-    title = "Unbubble"
-    text = (
+    return _dialog(
         f"thegreymirror.com wants to connect to Unbubble.\n\n"
         f"Only allow this if the website is showing the code {code}."
     )
+
+
+def _dialog(text: str) -> bool:
+    title = "Unbubble"
     if os.environ.get("GM_AUTO_APPROVE") == "1":
         return True
     if sys.platform == "darwin":
@@ -80,3 +88,42 @@ def _ask_blocking(code: str) -> bool:
 
 async def ask(code: str) -> bool:
     return await asyncio.to_thread(_ask_blocking, code)
+
+
+# Direct connections: one Allow per run of the helper. A refusal holds for a minute so a page
+# cannot reopen the dialog in a loop; after that the person can be asked again.
+_direct_lock = asyncio.Lock()
+_direct_allowed: set[str] = set()
+_direct_refused: dict[str, float] = {}
+REFUSAL_HOLD = 60.0
+
+
+def _direct_text(origin: str) -> str:
+    site = origin.split("://", 1)[-1]
+    return (
+        f"{site} wants to open your messages in Unbubble.\n\n"
+        f"Allow only if you are using {site} right now. Unbubble asks again the next time it starts."
+    )
+
+
+async def allow_direct(origin: str) -> bool:
+    """True once the person at the computer has allowed `origin` in this run of the helper."""
+    async with _direct_lock:  # several sockets at once show one dialog, not a stack of them
+        if origin in _direct_allowed:
+            return True
+        if time.monotonic() - _direct_refused.get(origin, -REFUSAL_HOLD) < REFUSAL_HOLD:
+            return False
+        if await asyncio.to_thread(_dialog, _direct_text(origin)):
+            _direct_allowed.add(origin)
+            _direct_refused.pop(origin, None)
+            return True
+        _direct_refused[origin] = time.monotonic()
+        return False
+
+
+def forget_direct() -> None:
+    """Withdraw every direct-connection approval (tests, and the tray's sign-out)."""
+    global _direct_lock
+    _direct_allowed.clear()
+    _direct_refused.clear()
+    _direct_lock = asyncio.Lock()  # a fresh lock, in case the old one belonged to another loop

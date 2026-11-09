@@ -174,7 +174,25 @@ def test_relay_refuses_untrusted_hosts(monkeypatch):
     assert not allowed_relay("wss://evil.example")
 
 
-def test_server_origin_lock_and_rpc(archive):
+@pytest.fixture()
+def dialog(monkeypatch):
+    """Stands in for the native Allow dialog: records each question, answers `answer[0]`."""
+    from unbubble import approval
+
+    approval.forget_direct()
+    asked: list[str] = []
+    answer = [True]
+
+    def fake(text: str) -> bool:
+        asked.append(text)
+        return answer[0]
+
+    monkeypatch.setattr(approval, "_dialog", fake)
+    yield asked, answer
+    approval.forget_direct()
+
+
+def test_server_origin_lock_and_rpc(archive, dialog):
     import aiohttp
     from aiohttp.test_utils import TestClient, TestServer
 
@@ -196,6 +214,53 @@ def test_server_origin_lock_and_rpc(archive):
             await ws.send_json({"id": 2, "method": "export.reveal", "params": {"path": "/etc"}})
             assert (await ws.receive_json())["error"]["code"] == "not_found"  # only folders it saved
             await ws.close()
+
+    asyncio.run(run())
+
+
+def test_website_needs_an_allow_on_the_computer(archive, dialog):
+    import aiohttp
+    from aiohttp.test_utils import TestClient, TestServer
+
+    from unbubble import approval, server
+    from unbubble.server import build_app
+
+    asked, answer = dialog
+    site = {"Origin": "https://thegreymirror.com"}
+
+    async def run():
+        async with TestClient(TestServer(build_app())) as client:
+            # Refused: no socket, so not one RPC reaches the archives.
+            answer[0] = False
+            with pytest.raises(aiohttp.WSServerHandshakeError) as refused:
+                await client.ws_connect("/ws", headers=site)
+            assert refused.value.status == 403 and len(asked) == 1
+            assert "thegreymirror.com wants to open your messages" in asked[0]
+            # A page can't reopen the dialog in a loop: a refusal holds without asking again.
+            with pytest.raises(aiohttp.WSServerHandshakeError):
+                await client.ws_connect("/ws", headers=site)
+            assert len(asked) == 1
+
+            # Allowed: one dialog however many sockets open at once, then none for this run.
+            approval._direct_refused.clear()  # the minute has passed
+            answer[0] = True
+            sockets = await asyncio.gather(*(client.ws_connect("/ws", headers=site) for _ in range(3)))
+            assert len(asked) == 2
+            await sockets[0].send_json({"id": 1, "method": "archive.thread_dump",
+                                        "params": {"archive_id": archive.id,
+                                                   "thread_id": archive.threads()[0]["id"]}})
+            assert "result" in await sockets[0].receive_json()
+            for ws in sockets:
+                await ws.close()
+
+            # The helper's own bundled UI is the person at the computer: never asked.
+            server.BOUND_PORT = 47613
+            try:
+                own = await client.ws_connect("/ws", headers={"Origin": "http://127.0.0.1:47613"})
+                await own.close()
+            finally:
+                server.BOUND_PORT = None
+            assert len(asked) == 2
 
     asyncio.run(run())
 

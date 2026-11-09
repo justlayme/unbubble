@@ -1,7 +1,8 @@
 """Local server on 127.0.0.1.
 
 * `GET  /status`      — lets thegreymirror.com detect the helper (CORS-limited to allowed origins).
-* `GET  /ws`          — the direct transport for Chrome, Edge, Firefox, Brave and Arc.
+* `GET  /ws`          — the direct transport for Chrome, Edge, Firefox, Brave and Arc. A website
+                        needs an Allow on this computer once per run (approval.allow_direct).
 * `GET  /`            — the standalone app: the same UI as thegreymirror.com/export, bundled in
                         the helper and served from this address (works offline, any browser).
 * `PUT  /recording/upload?t=…` — a screen recording dropped onto the page, streamed here. Needs a
@@ -22,7 +23,7 @@ from typing import Optional
 
 from aiohttp import WSMsgType, web
 
-from . import PROTOCOL_VERSION, __version__, uploads
+from . import PROTOCOL_VERSION, __version__, approval, uploads
 from .relay_client import handle_pair_url
 from .rpc import Rpc
 
@@ -33,6 +34,13 @@ PROD_ORIGINS = {
     "https://thegreymirror.com", "https://www.thegreymirror.com",
 }
 DEV_ORIGINS = {"http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:4173"}
+
+
+def own_origins() -> set[str]:
+    """The helper's bundled UI, served from this address."""
+    if not BOUND_PORT:
+        return set()
+    return {f"http://127.0.0.1:{BOUND_PORT}", f"http://localhost:{BOUND_PORT}"}
 
 
 def allowed_origins() -> set[str]:
@@ -69,6 +77,10 @@ async def ws_handler(request: web.Request) -> web.StreamResponse:
     origin = request.headers.get("Origin")
     if origin not in allowed_origins() or request.host.split(":")[0] not in ("127.0.0.1", "localhost"):
         return web.Response(status=403, text="Origin not allowed")
+    # The helper's own bundled UI is the person using the app directly. Every other origin,
+    # thegreymirror.com included, needs an Allow on this computer before it can call anything.
+    if origin not in own_origins() and not await approval.allow_direct(origin):
+        return web.Response(status=403, text="Not allowed on this computer")
     ws = web.WebSocketResponse(heartbeat=20, max_msg_size=4 * 1024 * 1024)
     await ws.prepare(request)
 
