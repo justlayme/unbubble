@@ -19,6 +19,8 @@ Export 4:
      it carries on with the name it was given and skips the recipients and last-active
      reads. The app keeps the chat, its recipients and its start day from the first run
      (ExportEngine.begin only takes them while progress.chat is empty).
+  3. Continues past an attachment whose upload fails, so one bad file cannot stop the
+     attachment stretch before it reports completion to the app.
 The name it restarts itself by becomes Unbubble Export 4.
 
 Usage: build-export-4.py <out.shortcut>   (unsigned; sign with `shortcuts sign`)
@@ -26,7 +28,7 @@ Usage: build-export-4.py <out.shortcut>   (unsigned; sign with `shortcuts sign`)
 import copy, os, plistlib, sys, uuid
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-src = plistlib.load(open(os.path.join(HERE, 'Unbubble Export 3.plist'), 'rb'))
+src = plistlib.load(open(os.path.join(HERE, 'published', 'unbubble-export-3.plist'), 'rb'))
 A = src['WFWorkflowActions']
 OBJ = '￼'
 IS, HAS_VALUE, NO_VALUE = 4, 100, 101
@@ -101,12 +103,19 @@ amp = action('is.workflow.actions.text.replace', {'WFInput': output_text(plus, '
                                                   'WFReplaceTextRegularExpression': False, 'WFReplaceTextCaseSensitive': True})
 
 out = []
+file_uploads = 0
 for i, a in enumerate(A):
     if i in RECIPIENTS or i in LAST_ACTIVE or i in CHAT_NAME:
         if i == CHAT_NAME[0]: out += chat_name
         if i == RECIPIENTS.start: out += chat_reads
         continue
     a = copy.deepcopy(a)
+    p = a['WFWorkflowActionParameters']
+    if (a['WFWorkflowActionIdentifier'] == 'is.workflow.actions.downloadurl'
+            and p.get('WFHTTPMethod') == 'POST' and p.get('WFHTTPBodyType') == 'File'
+            and '/file' in p.get('WFURL', {}).get('Value', {}).get('string', '')):
+        a['WFActionContinueAfterError'] = True
+        file_uploads += 1
     if i == RELAUNCH:
         link = a['WFWorkflowActionParameters']['WFTextActionText']['Value']
         old, new = 'name=Unbubble%20Export%203&', 'name=Unbubble%20Export%204&'
@@ -120,6 +129,7 @@ for i, a in enumerate(A):
     if i == PICKED_INIT: out += skip_ask
     if i == ENCODE: out += [plus, amp]
 
+assert file_uploads == 1, f'expected one attachment upload, found {file_uploads}'
 sc = {k: copy.deepcopy(v) for k, v in src.items() if k != 'WFWorkflowActions'}
 sc['WFWorkflowActions'] = out
 flat = plistlib.dumps(sc).decode('utf-8', 'replace')

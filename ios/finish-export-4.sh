@@ -21,6 +21,12 @@ A = plistlib.loads(urllib.request.urlopen(rec["fields"]["shortcut"]["value"]["do
 flat = json.dumps(A, default=str)
 assert len(A) == 239, f"{len(A)} actions, the build has 239"
 assert "name=Unbubble%20Export%204&" in flat and "%2B" in flat, "restart link is not Export 4"
+uploads = [a for a in A if a["WFWorkflowActionIdentifier"] == "is.workflow.actions.downloadurl"
+           and a["WFWorkflowActionParameters"].get("WFHTTPMethod") == "POST"
+           and a["WFWorkflowActionParameters"].get("WFHTTPBodyType") == "File"
+           and "/file" in a["WFWorkflowActionParameters"].get("WFURL", {}).get("Value", {}).get("string", "")]
+assert len(uploads) == 1 and uploads[0].get("WFActionContinueAfterError") is True, \
+    "attachment upload must continue after a download error"
 for a in A:
     t = a["WFWorkflowActionParameters"].get("WFTextActionText", {}).get("Value", {})
     if isinstance(t, dict) and "run-shortcut" in t.get("string", ""):
