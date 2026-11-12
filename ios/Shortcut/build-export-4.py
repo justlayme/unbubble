@@ -28,7 +28,7 @@ Usage: build-export-4.py <out.shortcut>   (unsigned; sign with `shortcuts sign`)
 import copy, os, plistlib, sys, uuid
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-src = plistlib.load(open(os.path.join(HERE, 'Unbubble Export 3.plist'), 'rb'))
+src = plistlib.load(open(os.path.join(HERE, 'published', 'unbubble-export-3.plist'), 'rb'))
 A = src['WFWorkflowActions']
 OBJ = '￼'
 IS, HAS_VALUE, NO_VALUE = 4, 100, 101
