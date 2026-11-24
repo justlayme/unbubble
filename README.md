@@ -55,3 +55,7 @@ Unbubble is a standalone exporter from the makers of [Grey Mirror](https://thegr
 ## Source and contributions
 
 The iPhone implementation and build instructions are in [`ios/`](ios/). Read the source, report a bug, contribute, or star this repository. Additional integration and developer components remain in their respective folders; their build instructions are not requirements for using the App Store app. See each component's licence and [SECURITY.md](SECURITY.md) for vulnerability reporting.
+
+---
+
+**Built by [Wentropy Labs](https://wentropylabs.com)** · [Grey Mirror](https://thegreymirror.com), the flagship text message analyzer for relationships · [Unbubble](https://thegreymirror.com/grey-mirror/unbubble), the 100% on-device iPhone message exporter · [Textimony](https://textimony.io) · [LinkedIn](https://www.linkedin.com/company/wentropy-labs) · [Crunchbase](https://www.crunchbase.com/organization/wentropy-labs)
